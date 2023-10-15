@@ -348,6 +348,44 @@ LANGUAGE plpgsql;
 
 CALL sp_insert_new_quantity_into_jewelry_inventory(10002, 200, 2, 1);
 
+CREATE OR REPLACE PROCEDURE
+    sp_remove_quantity_from_jewelry_inventory(modified_by INTEGER, requested_quantity INTEGER, item_id INTEGER, item_type_id INTEGER)
+AS
+$$
+DECLARE
+    current_quantity INTEGER;
+BEGIN
+    current_quantity := (
+        SELECT
+            quantity
+        FROM
+            jewelry_inventory
+            WHERE
+        jewelry_id = item_id
+            AND
+        jewelry_type_id = item_type_id
+        );
+    IF current_quantity >= requested_quantity THEN
+    UPDATE
+        jewelry_inventory
+    SET
+        last_modified_by = modified_by,
+        quantity = quantity - requested_quantity,
+        deleted_at = DATE(NOW())
+    WHERE
+        jewelry_id = item_id
+            AND
+        jewelry_type_id = item_type_id;
+    ELSE
+        RAISE NOTICE 'Not enough quantity. ONLY AVAILABLE: %', current_quantity;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CALL sp_remove_quantity_from_jewelry_inventory(10002, 150, 2, 1);
+
+
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_record_into_activities()
 RETURNS TRIGGER
@@ -359,7 +397,7 @@ DECLARE
 BEGIN
     action :=
         (CASE
-            WHEN OLD.quantity < NEW.quantity THEN 'Add'
+            WHEN OLD.quantity < NEW.quantity THEN 'Update'
             WHEN OLD.quantity > NEW.quantity THEN 'Delete'
         END);
     emp_id := (
