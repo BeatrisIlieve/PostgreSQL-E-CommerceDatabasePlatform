@@ -72,6 +72,7 @@ VALUES
 
 CREATE TABLE rings(
     id SERIAL PRIMARY KEY,
+    is_active BOOLEAN DEFAULT TRUE,
     jewelry_type_id INTEGER NOT NULL,
     image_url VARCHAR(200) NOT NULL,
     ring_name VARCHAR(100) NOT NULL,
@@ -91,6 +92,7 @@ CREATE TABLE rings(
 
 CREATE TABLE earrings(
     id SERIAL PRIMARY KEY,
+    is_active BOOLEAN DEFAULT TRUE,
     jewelry_type_id INTEGER NOT NULL,
     image_url VARCHAR(200) NOT NULL,
     earring_name VARCHAR(100) NOT NULL,
@@ -110,6 +112,7 @@ CREATE TABLE earrings(
 
 CREATE TABLE necklaces(
     id SERIAL PRIMARY KEY,
+    is_active BOOLEAN DEFAULT TRUE,
     jewelry_type_id INTEGER NOT NULL,
     image_url VARCHAR(200) NOT NULL,
     necklace_name VARCHAR(100) NOT NULL,
@@ -129,6 +132,7 @@ CREATE TABLE necklaces(
 
 CREATE TABLE bracelets(
     id SERIAL PRIMARY KEY,
+    is_active BOOLEAN DEFAULT TRUE,
     jewelry_type_id INTEGER NOT NULL,
     image_url VARCHAR(200) NOT NULL,
     bracelet_name VARCHAR(100) NOT NULL,
@@ -284,6 +288,7 @@ CREATE TABLE
                      ON DELETE CASCADE
 );
 
+
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_jewelry_into_jewelry_inventory()
 RETURNS TRIGGER
@@ -379,6 +384,11 @@ BEGIN
     ELSE
         RAISE NOTICE 'Not enough quantity. ONLY AVAILABLE: %', current_quantity;
     END IF;
+    IF current_quantity - requested_quantity = 0 THEN
+        UPDATE 
+            SELECT
+            
+    end if;
 END;
 $$
 LANGUAGE plpgsql;
@@ -422,8 +432,26 @@ AFTER UPDATE ON
 FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_record_into_activities();
 
-
-
+-- CREATE OR REPLACE FUNCTION
+--     trigger_fn_insert_new_record_into_sold_out_items()
+-- RETURNS TRIGGER
+-- AS
+-- $$
+--     DECLARE current_quantity INTEGER;
+-- BEGIN
+--     current_quantity := (
+--
+--                             )
+-- END;
+-- $$
+-- LANGUAGE plpgsql;
+--
+-- CREATE OR REPLACE TRIGGER
+--     tr_insert_new_record_into_sold_out_items
+-- AFTER DELETE ON
+--     jewelry_inventory
+-- FOR EACH ROW
+-- EXECUTE FUNCTION trigger_fn_insert_new_record_into_sold_out_items();
 
 
 
