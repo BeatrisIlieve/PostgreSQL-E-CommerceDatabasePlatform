@@ -53,8 +53,8 @@ CREATE TABLE
 insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20001, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278', '5/9/2023');
 insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20002, 'Gustav', 'Harte', 'gharte1@usa.gov', '448-500-3956', '2/3/2023');
 insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20003, 'Moina', 'Smy', 'msmy2@weather.com', '704-615-7509', '1/19/2023');
-insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20005, 'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114', '12/26/2022');
-insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20006, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473', '9/11/2023');
+insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20004, 'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114', '12/26/2022');
+insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20005, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473', '9/11/2023');
 
 CREATE TABLE
     jewelry_types(
@@ -346,7 +346,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_insert_new_quantity_into_jewelry_inventory(20002, 200, 2, 1);
+CALL sp_insert_new_quantity_into_jewelry_inventory(10002, 200, 2, 1);
 
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_record_into_activities()
