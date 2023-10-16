@@ -55,8 +55,6 @@ VALUES
 CREATE TABLE
     jewelries(
         id SERIAL PRIMARY KEY,
-        category_id INTEGER NOT NULL,
-        discount_id INTEGER,
         is_active BOOLEAN DEFAULT TRUE,
         name VARCHAR(100) NOT NULL,
         image_url VARCHAR(200) NOT NULL,
@@ -71,9 +69,11 @@ CREATE TABLE
 
 CREATE TABLE
     categories_jewelries(
-        id SERIAL PRIMARY KEY,
         categories_id INTEGER NOT NULL,
         jewelries_id INTEGER NOT NULL,
+
+        CONSTRAINT pk_categories_jewelries
+            PRIMARY KEY (categories_id, jewelries_id),
 
         CONSTRAINT fk_categories_jewelries_categories
                         FOREIGN KEY (categories_id)
@@ -92,7 +92,8 @@ CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
         last_modified_by_id INTEGER,
-        categories_jewelries_id INTEGER NOT NULL,
+        categories_id INTEGER NOT NULL,
+        jewelries_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0 NOT NULL,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ,
@@ -105,8 +106,8 @@ CREATE TABLE
                      ON DELETE CASCADE,
 
         CONSTRAINT fk_inventory_categories_jewelries
-                FOREIGN KEY (categories_jewelries_id)
-                REFERENCES categories_jewelries(id)
+                FOREIGN KEY (categories_id, jewelries_id)
+                REFERENCES categories_jewelries(categories_id, jewelries_id) MATCH FULL
                 ON UPDATE CASCADE
                 ON DELETE CASCADE
 );
@@ -136,7 +137,6 @@ CREATE TABLE
 CREATE TABLE
     discounts(
         id SERIAL PRIMARY KEY,
-        jewelry_id INTEGER NOT NULL,
         last_modified_by_id INTEGER NOT NULL,
         categories_jewelries_id INTEGER NOT NULL,
         name VARCHAR(20) NOT NULL,
@@ -144,13 +144,7 @@ CREATE TABLE
         is_active BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ,
         modified_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ,
-        
-        CONSTRAINT fk_discounts_jewelries
-             FOREIGN KEY (jewelry_id)
-             REFERENCES jewelries(id)
-             ON UPDATE CASCADE 
-             ON DELETE CASCADE 
+        deleted_at TIMESTAMPTZ
 );
 
 
@@ -180,9 +174,9 @@ DECLARE cat_jel_id INTEGER;
 BEGIN
     IF password = '123456787' THEN
         INSERT INTO
-            jewelries(category_id, name, image_url, regular_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
+            jewelries(name, image_url, regular_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
         VALUES
-            (inserted_category_id, inserted_name, inserted_image_url, inserted_price, inserted_metal_color, inserted_diamond_carat_weight, inserted_diamond_clarity, inserted_diamond_color, inserted_description);
+            (inserted_name, inserted_image_url, inserted_price, inserted_metal_color, inserted_diamond_carat_weight, inserted_diamond_clarity, inserted_diamond_color, inserted_description);
 
         jel_id := (
             SELECT
@@ -198,7 +192,7 @@ BEGIN
 
         cat_jel_id := (
             SELECT
-                MAX(id)
+                MAX(categories_id, jewelries_id)
             FROM
                 categories_jewelries
                           );
@@ -510,28 +504,23 @@ BEGIN
         UPDATE
             jewelries
         SET
-            discount_price = regular_price - (regular_price * (inserted_percent / 100))
-        WHERE
-            id = (
-                SELECT
-                    je.id
-                FROM
-                    jewelries AS je
-                JOIN
-                    categories_jewelries AS catje
-                ON
-                    je.id = catje.jewelries_id
-                JOIN
-                    categories AS cat
-                ON
-                   je.category_id = catje.categories_id
-                JOIN
-                    discounts AS dis
-                ON
-                    catje.id = dis.categories_jewelries_id
-                WHERE
-                    catje.id = inserted_categories_jewelries_id
-    );
+            discount_price = regular_price - (regular_price * 10 / inserted_percent)
+        WHERE id = (
+            SELECT
+                j.id
+            FROM
+                jewelries AS j
+            JOIN
+                categories_jewelries cj
+            ON
+                jewelries.id = cj.jewelries_id
+            JOIN
+                categories c
+            ON
+                c.id = cj.categories_id
+            WHERE
+                cj.id = inserted_categories_jewelries_id
+            );
 
     ELSE
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
