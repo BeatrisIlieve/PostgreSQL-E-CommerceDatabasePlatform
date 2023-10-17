@@ -1,9 +1,41 @@
-CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
-GRANT SELECT ON jewelries TO super_user;
-GRANT SELECT ON inventory TO super_user;
-GRANT SELECT ON inventory_records TO super_user;
-GRANT SELECT ON discounts TO super_user;
+CREATE OR REPLACE FUNCTION
+    fn_require_authentication(
+    provided_user_role VARCHAR(30),
+    provided_user_password VARCHAR(30),
+    provided_user_id INTEGER
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    is_authenticated BOOLEAN;
+BEGIN
+    IF
+        provided_user_id = (
+            SELECT
+                id
+            FROM
+                users
+            WHERE
+                 user_role = provided_user_role
+                        AND
+                 user_password = provided_user_password
+            )
+    THEN
+        is_authenticated := TRUE;
+    ELSE
+        is_authenticated := FALSE;
+    END IF;
+RETURN
+    is_authenticated;
+END;
+$$
+LANGUAGE plpgsql;
 
+
+CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
+
+GRANT CREATE ON SCHEMA public TO super_user;
 
 CREATE ROLE merchandising_user WITH LOGIN PASSWORD 'merchandising_password';
 GRANT INSERT ON jewelries TO merchandising_user;
@@ -18,6 +50,22 @@ CREATE ROLE issuing_inventory_user WITH LOGIN PASSWORD 'issuing_inventory_passwo
 GRANT DELETE ON inventory TO issuing_inventory_user;
 
 CREATE TABLE
+    users(
+        id SERIAL PRIMARY KEY,
+        user_role VARCHAR(30) NOT NULL,
+        user_password VARCHAR(30) NOT NULL
+);
+
+INSERT INTO
+    users(user_role, user_password)
+VALUES
+    ('super_user', 'super_user_password'),
+    ('merchandising_user', 'merchandising_password'),
+    ('receiving_inventory_user', 'receiving_inventory_password'),
+    ('issuing_inventory_user', 'issuing_inventory_password');
+
+
+CREATE TABLE
     departments(
         id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 20001 INCREMENT 1 ) PRIMARY KEY,
         name VARCHAR(30) NOT NULL
@@ -27,15 +75,26 @@ insert into departments (name) values ('Merchandising');
 insert into departments (name) values ('Receiving Inventory');
 insert into departments (name) values ('Issuing  Inventory');
 
+
+
+
 CREATE TABLE
     employees(
         id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 10001 INCREMENT 1 ) PRIMARY KEY,
-        department_id INTEGER,
-        first_name VARCHAR(30),
-        last_name VARCHAR(30),
-        email VARCHAR(30),
-        phone_number VARCHAR(20),
-        employed_at DATE,
+        user_id INTEGER NOT NULL,
+        is_active BOOLEAN NOT NULL,
+        department_id INTEGER NOT NULL,
+        first_name VARCHAR(30) NOT NULL,
+        last_name VARCHAR(30) NOT NULL,
+        email VARCHAR(30) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        employed_at DATE NOT NULL,
+
+        CONSTRAINT fk_employees_users
+            FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
 
         CONSTRAINT fk_employees_departments
              FOREIGN KEY (department_id)
@@ -66,7 +125,7 @@ CREATE TABLE
     jewelries(
         id SERIAL PRIMARY KEY,
         type_id INTEGER NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
+        is_active BOOLEAN NOT NULL,
         name VARCHAR(100) NOT NULL,
         image_url VARCHAR(200) NOT NULL,
         regular_price DECIMAL(7, 2) NOT NULL,
@@ -94,9 +153,9 @@ CREATE TABLE
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
 
-        CONSTRAINT fk_inventory_employees
+        CONSTRAINT fk_inventory_users
                      FOREIGN KEY (last_modified_by_id)
-                     REFERENCES employees(id)
+                     REFERENCES users(id)
                      ON UPDATE CASCADE
                      ON DELETE CASCADE,
 
@@ -111,7 +170,6 @@ CREATE TABLE
     inventory_records(
         id SERIAL PRIMARY KEY,
         inventory_id INTEGER NOT NULL,
-        discount_id INTEGER,
         operation VARCHAR(6) NOT NULL,
         date TIMESTAMPTZ DEFAULT DATE(NOW()),
 
@@ -134,31 +192,62 @@ CREATE TABLE
         deleted_at TIMESTAMPTZ
 );
 
+CREATE TABLE
+    discounts_records(
+        id SERIAL PRIMARY KEY,
+        discount_id INTEGER NOT NULL,
+        operation VARCHAR(6) NOT NULL,
+        date TIMESTAMPTZ DEFAULT DATE(NOW()),
+
+        CONSTRAINT fk_discounts_records_discounts
+                     FOREIGN KEY (discount_id)
+                     REFERENCES discounts(id)
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
 
 
 CREATE OR REPLACE PROCEDURE
-    sp_insert_jewelry_into_jewelries_with_password(
-    password VARCHAR(9),
-    inserted_last_modified_by INTEGER,
-    inserted_type_id INTEGER,
-    inserted_name VARCHAR(100),
-    inserted_image_url VARCHAR(200) ,
-    inserted_price DECIMAL(7, 2),
-    inserted_metal_color VARCHAR(12),
-    inserted_diamond_carat_weight VARCHAR(10),
-    inserted_diamond_clarity VARCHAR(10),
-    inserted_diamond_color VARCHAR(5),
-    inserted_description TEXT
+    sp_insert_jewelry_into_jewelries(
+    provided_user_role VARCHAR(30),
+    provided_user_password VARCHAR(9),
+    provided_last_modified_by_id INTEGER,
+    provided_type_id INTEGER,
+    provided_is_active BOOLEAN,
+    provided_name VARCHAR(100),
+    provided_image_url VARCHAR(200) ,
+    provided_regular_price DECIMAL(7, 2),
+    provided_metal_color VARCHAR(12),
+    provided_diamond_carat_weight VARCHAR(10),
+    provided_diamond_clarity VARCHAR(10),
+    provided_diamond_color VARCHAR(5),
+    provided_description TEXT
 )
 AS
 $$
 DECLARE current_jewelry_id INTEGER;
 BEGIN
-    IF password = '123456787' THEN
+    IF 
+        (SELECT fn_require_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_last_modified_by_id)) IS TRUE
+    THEN
         INSERT INTO
-            jewelries(type_id, name, image_url, regular_price, discount_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
+            jewelries(type_id, is_active, name, image_url, regular_price, discount_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
         VALUES
-            (inserted_type_id, inserted_name, inserted_image_url, inserted_price, inserted_metal_color, inserted_diamond_carat_weight, inserted_diamond_clarity, inserted_diamond_color, inserted_description);
+            (
+            provided_type_id,
+            provided_is_active,
+            provided_name,
+            provided_image_url,
+            provided_regular_price,
+            provided_metal_color,
+            provided_diamond_carat_weight,
+            provided_diamond_clarity,
+            provided_diamond_color,
+            provided_description
+            );
 
         current_jewelry_id := (
             SELECT
@@ -170,7 +259,7 @@ BEGIN
         INSERT INTO
             inventory(last_modified_by_id, jewelry_id, created_at, updated_at, deleted_at)
         VALUES
-            (inserted_last_modified_by, current_jewelry_id,DATE(NOW()), NULL, NULL);
+            (provided_last_modified_by_id, current_jewelry_id, DATE(NOW()), NULL, NULL);
     ELSE
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -178,8 +267,9 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_insert_jewelry_into_jewelries_with_password(
-        '123456787',
+CALL sp_insert_jewelry_into_jewelries(
+        'merchandising_user',
+        'merchandising_password',
         10002,
         10,
         1,
@@ -196,23 +286,29 @@ CALL sp_insert_jewelry_into_jewelries_with_password(
 
 CREATE OR REPLACE PROCEDURE
     sp_add_quantity_into_inventory_with_password(
-        password VARCHAR(9),
-        id_of_employee INTEGER,
-        inserted_jewelry_id INTEGER,
+        provided_user_role VARCHAR(30),
+        provided_user_password VARCHAR(9),
+        provided_last_modified_by_id INTEGER,
+        provided_jewelry_id INTEGER,
         added_quantity INTEGER
 )
 AS
 $$
 BEGIN
-    IF password = '123456788' THEN
+    IF 
+        (SELECT fn_require_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_last_modified_by_id)) IS TRUE
+    THEN
         UPDATE
             inventory
         SET
-            last_modified_by_id = id_of_employee,
+            last_modified_by_id = provided_last_modified_by_id,
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
-            jewelries_id = inserted_jewelry_id;
+            jewelries_id = provided_jewelry_id;
     ELSE 
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -224,9 +320,10 @@ CALL sp_add_quantity_into_inventory_with_password('123456788', 10002, 1, 10);
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory_with_password(
-        password VARCHAR(9),
-        id_of_employee INTEGER,
-        inserted_jewelry_id INTEGER,
+        provided_user_role VARCHAR(30),
+        provided_user_password VARCHAR(9),
+        provided_id_of_employee INTEGER,
+        provided_jewelry_id INTEGER,
         requested_quantity INTEGER
 )
 AS
@@ -234,32 +331,37 @@ $$
 DECLARE
     current_quantity INTEGER;
 BEGIN
-    IF password = '123456789' THEN
+        IF 
+        (SELECT fn_require_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_id_of_employee)) IS TRUE
+    THEN
         current_quantity := (
             SELECT
                 quantity
             FROM
                 inventory
             WHERE
-                jewelry_id = inserted_jewelry_id
+                jewelry_id = provided_jewelry_id
             );
         CASE
             WHEN current_quantity >= requested_quantity THEN
                 UPDATE
                     inventory
                 SET
-                    last_modified_by_id = id_of_employee,
+                    last_modified_by_id = provided_id_of_employee,
                     quantity = quantity - requested_quantity,
                     deleted_at = DATE(NOW())
                 WHERE
-                    jewelry_id = inserted_jewelry_id;
+                    jewelry_id = provided_jewelry_id;
             IF current_quantity - requested_quantity = 0 THEN
                     UPDATE
                         jewelries
                     SET
                         is_active = FALSE
                     WHERE
-                        id = inserted_jewelry_id;
+                        id = provided_jewelry_id;
             END IF;
         ELSE
             RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
@@ -440,25 +542,25 @@ VALUES (
 
 CREATE OR REPLACE PROCEDURE
     sp_insert_discount_with_password(
+    role VARCHAR(30),
     password VARCHAR(9),
-    inserted_last_modified_by INTEGER,
-    inserted_name VARCHAR(30),
-    inserted_percent INTEGER,
-    inserted_categories_jewelries_id INTEGER
+    provided_last_modified_by INTEGER,
+    provided_name VARCHAR(30),
+    provided_percent INTEGER,
+    provided_categories_jewelries_id INTEGER
 )
 AS
 $$
 BEGIN
-    IF password = '123456787' THEN
-
+    IF role = 'merchandising_user' AND password = 'merchandising_password' THEN
         INSERT INTO
             discounts(last_modified_by_id, categories_jewelries_id, name, percent, created_at, modified_at, deleted_at)
         VALUES
-            (inserted_last_modified_by, inserted_categories_jewelries_id, inserted_name, inserted_percent, DATE(NOW()), NULL, NULL);
+            (provided_last_modified_by, provided_categories_jewelries_id, provided_name, provided_percent, DATE(NOW()), NULL, NULL);
         UPDATE
             jewelries
         SET
-            discount_price = regular_price - (regular_price * 10 / inserted_percent)
+            discount_price = regular_price - (regular_price * 10 / provided_percent)
         WHERE id = (
             SELECT
                 j.id
@@ -473,7 +575,7 @@ BEGIN
             ON
                 c.id = cj.categories_id
             WHERE
-                cj.id = inserted_categories_jewelries_id
+                cj.id = provided_categories_jewelries_id
             );
 
     ELSE
@@ -637,3 +739,32 @@ AFTER INSERT ON
     inventory
 FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
+
+
+
+
+
+-- GRANT DELETE ON employees TO super_user;
+--
+-- GRANT INSERT ON users TO super_user;
+-- GRANT SELECT ON users TO super_user;
+-- GRANT UPDATE ON users TO super_user;
+-- GRANT DELETE ON users TO super_user;
+--
+-- GRANT INSERT ON departments TO super_user;
+-- GRANT SELECT ON departments TO super_user;
+-- GRANT UPDATE ON departments TO super_user;
+-- GRANT DELETE ON departments TO super_user;
+--
+-- GRANT INSERT ON types TO super_user;
+-- GRANT SELECT ON types TO super_user;
+-- GRANT UPDATE ON types TO super_user;
+-- GRANT DELETE ON types TO super_user;
+--
+-- GRANT SELECT ON jewelries TO super_user;
+-- GRANT SELECT ON inventory TO super_user;
+-- GRANT SELECT ON inventory_records TO super_user;
+-- GRANT SELECT ON discounts TO super_user;
+-- GRANT INSERT ON employees TO super_user;
+-- GRANT SELECT ON employees TO super_user;
+-- GRANT UPDATE ON employees TO super_user;
