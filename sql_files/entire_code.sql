@@ -231,8 +231,6 @@ CREATE TABLE
         CONSTRAINT ck_discounts_percentage
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
-ALTER TABLE discounts
-ALTER COLUMN percentage TYPE DECIMAL(3,2);
 
 CREATE TABLE
     discounts_records(
@@ -479,6 +477,191 @@ AFTER INSERT ON
 FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_user_first',
+    'merchandising_password_first',
+    '10002',
+    1,
+    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
+    19879.00,
+    'ROSE GOLD',
+    '1.75ctw',
+    'SI1-SI2',
+    'G-H',
+    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
+);
+
+CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
+
+CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
+
+
+
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_insert_percent_into_discounts(
+        provided_user_role VARCHAR(30),
+        provided_user_password VARCHAR(9),
+        provided_last_modified_by_emp_id CHAR(5),
+        provided_jewelry_id INTEGER,
+        provided_percent DECIMAL(3,2)
+)
+AS
+$$
+BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'merchandising', provided_last_modified_by_emp_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
+    IF
+        (SELECT credentials_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_last_modified_by_emp_id)) IS TRUE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            discount_price = regular_price - (regular_price * provided_percent)
+        WHERE
+            id = provided_jewelry_id;
+        IF provided_jewelry_id IN (
+            SELECT
+                jewelry_id
+            FROM
+                discounts
+            )
+        THEN
+            UPDATE
+                discounts
+            SET
+                percentage = provided_percent,
+                is_active = TRUE
+            WHERE
+                jewelry_id = provided_jewelry_id;
+        ELSE
+            INSERT INTO
+                discounts(last_modified_by_emp_id, jewelry_id, percentage, created_at, updated_at, deleted_at)
+            VALUES
+                (
+                provided_last_modified_by_emp_id, provided_jewelry_id, provided_percent, DATE(NOW()), NULL, NULL
+                );
+        END IF;
+    ELSE
+        RAISE EXCEPTION 'Authorization failed: Incorrect credentials';
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.40);
+CALL sp_remove_percent_from_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1);
+
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_remove_percent_from_discounts(
+        provided_user_role VARCHAR(30),
+        provided_user_password VARCHAR(9),
+        provided_last_modified_by_emp_id CHAR(5),
+        provided_jewelry_id INTEGER
+)
+AS
+$$
+BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'merchandising', provided_last_modified_by_emp_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
+        IF
+        (SELECT credentials_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_last_modified_by_emp_id)) IS TRUE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            discount_price = NULL
+        WHERE
+            id = provided_jewelry_id;
+        DELETE FROM
+            discounts
+        WHERE
+            jewelry_id = provided_jewelry_id;
+    ELSE
+        RAISE EXCEPTION 'Authorization failed: Incorrect password';
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_insert_new_entity_into_inventory_records_on_update()
+RETURNS TRIGGER
+AS
+$$
+DECLARE
+    operation_type VARCHAR(6);
+BEGIN
+    operation_type :=
+        (CASE
+            WHEN OLD.quantity < NEW.quantity THEN 'Update'
+            WHEN OLD.quantity > NEW.quantity THEN 'Delete'
+        END);
+    INSERT INTO
+            inventory_records(inventory_id, operation, date)
+    VALUES
+        (OLD.id, operation_type, DATE(NOW()));
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER
+    tr_insert_new_entity_into_jewelry_records_on_update
+AFTER UPDATE ON
+    inventory
+FOR EACH ROW
+EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update();
+
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_insert_new_entity_into_jewelry_records_on_create()
+RETURNS TRIGGER
+AS
+$$
+DECLARE
+    operation_type VARCHAR(6);
+BEGIN
+    operation_type := 'Create';
+    INSERT INTO
+            inventory_records(inventory_id, operation, date)
+    VALUES
+        (NEW.id,  operation_type, DATE(NOW()));
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER
+    tr_insert_new_entity_into_jewelry_records_on_create
+AFTER INSERT ON
+    inventory
+FOR EACH ROW
+EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
+
 
 
 
@@ -507,56 +690,3 @@ CALL sp_insert_jewelry_into_jewelries(
 CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
 
 CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
-
-
-
-
-
-SELECT(1000.00 - (1000.00 * 0.10));
-SELECT NUMERIC(0.11);
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_insert_percent_into_discounts(
-        provided_user_role VARCHAR(30),
-        provided_user_password VARCHAR(9),
-        provided_last_modified_by_emp_id CHAR(5),
-        provided_jewelry_id INTEGER,
-        provided_percent DECIMAL(3,2)
-)
-AS
-$$
-BEGIN
-    IF NOT
-        (SELECT fn_role_authentication(
-                    'merchandising', provided_last_modified_by_emp_id
-                    ))
-    THEN
-        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
-    END IF;
-    IF
-        (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
-            provided_last_modified_by_emp_id)) IS TRUE
-    THEN
-        INSERT INTO
-            discounts(last_modified_by_emp_id, jewelry_id, percentage, created_at, updated_at, deleted_at)
-        VALUES
-            (
-            provided_last_modified_by_emp_id, provided_jewelry_id, provided_percent, DATE(NOW()), NULL, NULL
-            );
-        UPDATE
-            jewelries
-        SET
-            discount_price = regular_price - (regular_price * provided_percent)
-        WHERE
-            id = provided_jewelry_id;
-    ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect credentials';
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.10);
