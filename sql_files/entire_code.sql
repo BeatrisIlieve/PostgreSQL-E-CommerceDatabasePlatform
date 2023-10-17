@@ -1,11 +1,21 @@
-CREATE ROLE create_role LOGIN PASSWORD '123456787';
-GRANT INSERT ON jewelries TO create_role;
+CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
+GRANT SELECT ON jewelries TO super_user;
+GRANT SELECT ON inventory TO super_user;
+GRANT SELECT ON inventory_records TO super_user;
+GRANT SELECT ON discounts TO super_user;
 
-CREATE ROLE update_role LOGIN PASSWORD '123456788';
-GRANT UPDATE ON jewelries TO update_role;
 
-CREATE ROLE delete_role LOGIN PASSWORD '123456789';
-GRANT DELETE ON jewelries TO delete_role;
+CREATE ROLE merchandising_user WITH LOGIN PASSWORD 'merchandising_password';
+GRANT INSERT ON jewelries TO merchandising_user;
+GRANT INSERT ON discounts TO merchandising_user;
+GRANT UPDATE ON discounts TO merchandising_user;
+GRANT DELETE ON discounts TO merchandising_user;
+
+CREATE ROLE receiving_inventory_user WITH LOGIN PASSWORD 'receiving_inventory_password';
+GRANT UPDATE ON inventory TO receiving_inventory_user;
+
+CREATE ROLE issuing_inventory_user WITH LOGIN PASSWORD 'issuing_inventory_password';
+GRANT DELETE ON inventory TO issuing_inventory_user;
 
 CREATE TABLE
     departments(
@@ -39,13 +49,13 @@ insert into employees (department_id, first_name, last_name, email, phone_number
 insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20003, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473', '9/11/2023');
 
 CREATE TABLE
-    categories(
+    types(
         id SERIAL PRIMARY KEY,
         name VARCHAR(30) NOT NULL
 );
 
 INSERT INTO
-    categories(name)
+    types(name)
 VALUES
     ('Ring'),
     ('Earring'),
@@ -55,6 +65,7 @@ VALUES
 CREATE TABLE
     jewelries(
         id SERIAL PRIMARY KEY,
+        type_id INTEGER NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         name VARCHAR(100) NOT NULL,
         image_url VARCHAR(200) NOT NULL,
@@ -64,37 +75,21 @@ CREATE TABLE
         diamond_carat_weight VARCHAR(10) NOT NULL,
         diamond_clarity VARCHAR(10) NOT NULL,
         diamond_color VARCHAR(5) NOT NULL,
-        description TEXT NOT NULL
-);
+        description TEXT NOT NULL,
 
-CREATE TABLE
-    categories_jewelries(
-        categories_id INTEGER NOT NULL,
-        jewelries_id INTEGER NOT NULL,
-
-        CONSTRAINT pk_categories_jewelries
-            PRIMARY KEY (categories_id, jewelries_id),
-
-        CONSTRAINT fk_categories_jewelries_categories
-                        FOREIGN KEY (categories_id)
-                        REFERENCES categories(id)
-                        ON UPDATE CASCADE
-                        ON DELETE CASCADE,
-
-        CONSTRAINT fk_categories_jewelries_jewelries
-                        FOREIGN KEY (jewelries_id)
-                        REFERENCES jewelries(id)
-                        ON UPDATE CASCADE
-                        ON DELETE CASCADE
+        CONSTRAINT fk_jewelries_types
+             FOREIGN KEY (type_id)
+             REFERENCES types(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE
 );
 
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
         last_modified_by_id INTEGER,
-        categories_id INTEGER NOT NULL,
-        jewelries_id INTEGER NOT NULL,
-        quantity INTEGER DEFAULT 0 NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
@@ -105,31 +100,24 @@ CREATE TABLE
                      ON UPDATE CASCADE
                      ON DELETE CASCADE,
 
-        CONSTRAINT fk_inventory_categories_jewelries
-                FOREIGN KEY (categories_id, jewelries_id)
-                REFERENCES categories_jewelries(categories_id, jewelries_id) MATCH FULL
+        CONSTRAINT fk_inventory_jewelries
+                FOREIGN KEY (jewelry_id)
+                REFERENCES jewelries(id)
                 ON UPDATE CASCADE
                 ON DELETE CASCADE
 );
 
 CREATE TABLE
-    jewelry_records(
+    inventory_records(
         id SERIAL PRIMARY KEY,
         inventory_id INTEGER NOT NULL,
         discount_id INTEGER,
-        employee_id INTEGER NOT NULL,
         operation VARCHAR(6) NOT NULL,
         date TIMESTAMPTZ DEFAULT DATE(NOW()),
 
-        CONSTRAINT fk_jewelry_records_inventory
+        CONSTRAINT fk_inventory_records_inventory
                      FOREIGN KEY (inventory_id)
                      REFERENCES inventory(id)
-                     ON UPDATE CASCADE
-                     ON DELETE CASCADE,
-
-        CONSTRAINT fk_jewelry_records_employees
-                     FOREIGN KEY (employee_id)
-                     REFERENCES employees(id)
                      ON UPDATE CASCADE
                      ON DELETE CASCADE
 );
@@ -138,8 +126,7 @@ CREATE TABLE
     discounts(
         id SERIAL PRIMARY KEY,
         last_modified_by_id INTEGER NOT NULL,
-        categories_jewelries_id INTEGER NOT NULL,
-        name VARCHAR(20) NOT NULL,
+        jewelry_id INTEGER NOT NULL,
         percent INTEGER NOT NULL,
         is_active BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ,
@@ -149,15 +136,11 @@ CREATE TABLE
 
 
 
-
-
-
 CREATE OR REPLACE PROCEDURE
     sp_insert_jewelry_into_jewelries_with_password(
     password VARCHAR(9),
     inserted_last_modified_by INTEGER,
-    inserted_quantity INTEGER,
-    inserted_category_id INTEGER,
+    inserted_type_id INTEGER,
     inserted_name VARCHAR(100),
     inserted_image_url VARCHAR(200) ,
     inserted_price DECIMAL(7, 2),
@@ -169,38 +152,25 @@ CREATE OR REPLACE PROCEDURE
 )
 AS
 $$
-DECLARE jel_id INTEGER;
-DECLARE cat_jel_id INTEGER;
+DECLARE current_jewelry_id INTEGER;
 BEGIN
     IF password = '123456787' THEN
         INSERT INTO
-            jewelries(name, image_url, regular_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
+            jewelries(type_id, name, image_url, regular_price, discount_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
         VALUES
-            (inserted_name, inserted_image_url, inserted_price, inserted_metal_color, inserted_diamond_carat_weight, inserted_diamond_clarity, inserted_diamond_color, inserted_description);
+            (inserted_type_id, inserted_name, inserted_image_url, inserted_price, inserted_metal_color, inserted_diamond_carat_weight, inserted_diamond_clarity, inserted_diamond_color, inserted_description);
 
-        jel_id := (
+        current_jewelry_id := (
             SELECT
                 MAX(id)
             FROM
                 jewelries
-                      );
+        );
 
         INSERT INTO
-            categories_jewelries(categories_id, jewelries_id)
+            inventory(last_modified_by_id, jewelry_id, created_at, updated_at, deleted_at)
         VALUES
-            (inserted_category_id, jel_id);
-
-        cat_jel_id := (
-            SELECT
-                MAX(categories_id, jewelries_id)
-            FROM
-                categories_jewelries
-                          );
-
-        INSERT INTO
-            inventory(last_modified_by_id, categories_jewelries_id, quantity, created_at, updated_at, deleted_at)
-        VALUES
-            (inserted_last_modified_by, cat_jel_id, inserted_quantity, DATE(NOW()), NULL, NULL);
+            (inserted_last_modified_by, current_jewelry_id,DATE(NOW()), NULL, NULL);
     ELSE
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -212,6 +182,7 @@ CALL sp_insert_jewelry_into_jewelries_with_password(
         '123456787',
         10002,
         10,
+        1,
         1,
         'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
         'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
@@ -227,7 +198,7 @@ CREATE OR REPLACE PROCEDURE
     sp_add_quantity_into_inventory_with_password(
         password VARCHAR(9),
         id_of_employee INTEGER,
-        id_of_categories_jewelries INTEGER,
+        inserted_jewelry_id INTEGER,
         added_quantity INTEGER
 )
 AS
@@ -241,7 +212,7 @@ BEGIN
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
-            categories_jewelries_id = id_of_categories_jewelries;
+            jewelries_id = inserted_jewelry_id;
     ELSE 
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -255,7 +226,7 @@ CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory_with_password(
         password VARCHAR(9),
         id_of_employee INTEGER,
-        id_of_categories_jewelries INTEGER,
+        inserted_jewelry_id INTEGER,
         requested_quantity INTEGER
 )
 AS
@@ -270,7 +241,7 @@ BEGIN
             FROM
                 inventory
             WHERE
-                categories_jewelries_id = id_of_categories_jewelries
+                jewelry_id = inserted_jewelry_id
             );
         CASE
             WHEN current_quantity >= requested_quantity THEN
@@ -281,34 +252,17 @@ BEGIN
                     quantity = quantity - requested_quantity,
                     deleted_at = DATE(NOW())
                 WHERE
-                    categories_jewelries_id = id_of_categories_jewelries;
+                    jewelry_id = inserted_jewelry_id;
             IF current_quantity - requested_quantity = 0 THEN
                     UPDATE
                         jewelries
                     SET
                         is_active = FALSE
                     WHERE
-                        id = (
-                            SELECT
-                                je.id
-                            FROM
-                                jewelries AS je
-
-                            JOIN
-                                categories_jewelries AS catje
-                            ON
-                                je.id = catje.jewelries_id
-                            JOIN
-                                inventory AS inv
-                            ON
-                                catje.id = inv.categories_jewelries_id
-                            WHERE
-                                catje.jewelries_id = je.id
-                                    AND
-                                catje.id = id_of_categories_jewelries
-                            );
-                    END IF;
-                RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
+                        id = inserted_jewelry_id;
+            END IF;
+        ELSE
+            RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
         END CASE;
     ELSE
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
@@ -320,7 +274,7 @@ LANGUAGE plpgsql;
 CALL sp_remove_quantity_from_inventory_with_password('123456789', 10003, 1, 9);
 
 CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_jewelry_records_on_update()
+    trigger_fn_insert_new_entity_into_inventory_records_on_update()
 RETURNS TRIGGER
 AS
 $$
@@ -346,7 +300,7 @@ CREATE OR REPLACE TRIGGER
 AFTER UPDATE ON
     inventory
 FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_update();
+EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update();
 
 
 CREATE OR REPLACE FUNCTION
@@ -630,7 +584,7 @@ LANGUAGE plpgsql;
 CALL sp_remove_quantity_from_inventory_with_password('123456789', 10003, 1, 9);
 
 CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_jewelry_records_on_update()
+    trigger_fn_insert_new_entity_into_inventory_records_on_update()
 RETURNS TRIGGER
 AS
 $$
@@ -656,7 +610,7 @@ CREATE OR REPLACE TRIGGER
 AFTER UPDATE ON
     inventory
 FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_update();
+EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update();
 
 
 CREATE OR REPLACE FUNCTION
