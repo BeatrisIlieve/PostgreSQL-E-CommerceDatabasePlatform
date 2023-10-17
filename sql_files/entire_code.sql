@@ -462,25 +462,6 @@ AFTER INSERT ON
 FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
-CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_user_first',
-    'merchandising_password_first',
-    '10002',
-    1,
-    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
-    19879.00,
-    'ROSE GOLD',
-    '1.75ctw',
-    'SI1-SI2',
-    'G-H',
-    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-);
-
-CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
-
-CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
-
 
 CREATE OR REPLACE PROCEDURE
     sp_insert_percent_into_discounts(
@@ -522,7 +503,8 @@ BEGIN
             UPDATE
                 discounts
             SET
-                percentage = provided_percent
+                percentage = provided_percent,
+                updated_at = DATE(NOW())
             WHERE
                 jewelry_id = provided_jewelry_id;
         ELSE
@@ -569,8 +551,10 @@ BEGIN
             discount_price = NULL
         WHERE
             id = provided_jewelry_id;
-        DELETE FROM
+        UPDATE
             discounts
+        SET
+            deleted_at = DATE(NOW())
         WHERE
             jewelry_id = provided_jewelry_id;
     ELSE
@@ -580,5 +564,26 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.40);
+
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_user_first',
+    'merchandising_password_first',
+    '10002',
+    1,
+    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
+    19879.00,
+    'ROSE GOLD',
+    '1.75ctw',
+    'SI1-SI2',
+    'G-H',
+    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
+);
+
+CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
+
+CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
+
+CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.20);
+
 CALL sp_remove_percent_from_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1);
