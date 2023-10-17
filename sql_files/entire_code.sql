@@ -2,29 +2,7 @@ CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
 
 GRANT CREATE ON SCHEMA public TO super_user;
 
-CREATE ROLE merchandising_user_first WITH LOGIN PASSWORD 'merchandising_password_first';
-GRANT INSERT ON jewelries TO merchandising_user_first;
-GRANT INSERT ON discounts TO merchandising_user_first;
-GRANT UPDATE ON discounts TO merchandising_user_first;
-GRANT DELETE ON discounts TO merchandising_user_first;
 
-CREATE ROLE merchandising_user_second WITH LOGIN PASSWORD 'merchandising_password_second';
-GRANT INSERT ON jewelries TO merchandising_user_second;
-GRANT INSERT ON discounts TO merchandising_user_second;
-GRANT UPDATE ON discounts TO merchandising_user_second;
-GRANT DELETE ON discounts TO merchandising_user_second;
-
-CREATE ROLE receiving_inventory_user_first WITH LOGIN PASSWORD 'receiving_inventory_password_first';
-GRANT UPDATE ON inventory TO receiving_inventory_user_first;
-
-CREATE ROLE receiving_inventory_user_second WITH LOGIN PASSWORD 'receiving_inventory_password_second';
-GRANT UPDATE ON inventory TO receiving_inventory_user_second;
-
-CREATE ROLE issuing_inventory_user_first WITH LOGIN PASSWORD 'issuing_inventory_password_first';
-GRANT DELETE ON inventory TO issuing_inventory_user_first;
-
-CREATE ROLE issuing_inventory_user_second WITH LOGIN PASSWORD 'issuing_inventory_password_second';
-GRANT DELETE ON inventory TO issuing_inventory_user_second;
 
 
 CREATE TABLE
@@ -91,27 +69,29 @@ insert into employees (user_id, department_id, first_name, last_name, email, pho
 
 
 CREATE OR REPLACE FUNCTION
-    fn_require_authentication(
+    credentials_authentication(
     provided_user_role VARCHAR(30),
     provided_user_password VARCHAR(30),
-    provided_user_id INTEGER
+    provided_user_id CHAR(5)
 )
 RETURNS BOOLEAN
 AS
 $$
 DECLARE
+    id_as_integer INTEGER;
     is_authenticated BOOLEAN;
 BEGIN
+    id_as_integer := provided_user_id::INTEGER;
     IF
-        provided_user_id = (
+        id_as_integer = (
             SELECT
-                u.id
+                e.id
             FROM
-                users AS u
+                employees AS e
             JOIN
-                employees
+                users
             ON
-                u.id = employees.user_id
+                e.user_id = users.id
             WHERE
                  user_role = provided_user_role
                         AND
@@ -126,6 +106,39 @@ BEGIN
     END IF;
 RETURN
     is_authenticated;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION
+    fk_role_authentication(
+    department_name VARCHAR(30),
+    provided_emp_id INTEGER
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    is_role_authorised BOOLEAN;
+BEGIN
+    IF
+        (SELECT
+            u.user_role LIKE department_name || '%'
+        FROM
+            users AS u
+        JOIN
+            employees AS e
+        ON
+            u.id = e.user_id
+        WHERE
+            e.id = provided_emp_id::INTEGER)
+    THEN
+        is_role_authorised := TRUE;
+    ELSE
+        is_role_authorised := FALSE;
+    END IF;
+    RETURN is_role_authorised;
 END;
 $$
 LANGUAGE plpgsql;
@@ -170,7 +183,7 @@ CREATE TABLE
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
-        last_modified_by_id INTEGER,
+        last_modified_by_emp_id INTEGER NOT NULL,
         jewelry_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL,
@@ -178,8 +191,8 @@ CREATE TABLE
         deleted_at TIMESTAMPTZ,
 
         CONSTRAINT fk_inventory_users
-                     FOREIGN KEY (last_modified_by_id)
-                     REFERENCES users(id)
+                     FOREIGN KEY (last_modified_by_emp_id)
+                     REFERENCES employees(id)
                      ON UPDATE CASCADE
                      ON DELETE CASCADE,
 
@@ -207,7 +220,7 @@ CREATE TABLE
 CREATE TABLE
     discounts(
         id SERIAL PRIMARY KEY,
-        last_modified_by_id INTEGER NOT NULL,
+        last_modified_by_emp_id CHAR(5) NOT NULL,
         jewelry_id INTEGER NOT NULL,
         percent INTEGER NOT NULL,
         is_active BOOLEAN DEFAULT FALSE,
@@ -235,9 +248,8 @@ CREATE OR REPLACE PROCEDURE
     sp_insert_jewelry_into_jewelries(
     provided_user_role VARCHAR(30),
     provided_user_password VARCHAR(9),
-    provided_last_modified_by_id INTEGER,
+    provided_last_modified_by_emp_id CHAR(5),
     provided_type_id INTEGER,
-    provided_is_active BOOLEAN,
     provided_name VARCHAR(100),
     provided_image_url VARCHAR(200) ,
     provided_regular_price DECIMAL(7, 2),
@@ -251,18 +263,21 @@ AS
 $$
 DECLARE current_jewelry_id INTEGER;
 BEGIN
-    IF 
-        (SELECT fn_require_authentication(
+    IF
+        (SELECT fk_role_authentication(
+                    'merchandising', provided_last_modified_by_emp_id
+                    ))
+    AND
+        (SELECT credentials_authentication(
             provided_user_role,
             provided_user_password,
-            provided_last_modified_by_id)) IS TRUE
+            provided_last_modified_by_emp_id)) IS TRUE
     THEN
         INSERT INTO
-            jewelries(type_id, is_active, name, image_url, regular_price, discount_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
+            jewelries(type_id, name, image_url, regular_price, metal_color, diamond_carat_weight, diamond_clarity, diamond_color, description)
         VALUES
             (
             provided_type_id,
-            provided_is_active,
             provided_name,
             provided_image_url,
             provided_regular_price,
@@ -281,9 +296,9 @@ BEGIN
         );
 
         INSERT INTO
-            inventory(last_modified_by_id, jewelry_id, created_at, updated_at, deleted_at)
+            inventory(last_modified_by_emp_id, jewelry_id, created_at, updated_at, deleted_at)
         VALUES
-            (provided_last_modified_by_id, current_jewelry_id, DATE(NOW()), NULL, NULL);
+            (provided_last_modified_by_emp_id::INTEGER, current_jewelry_id, DATE(NOW()), NULL, NULL);
     ELSE
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -296,7 +311,7 @@ CREATE OR REPLACE PROCEDURE
     sp_add_quantity_into_inventory_with_password(
         provided_user_role VARCHAR(30),
         provided_user_password VARCHAR(9),
-        provided_last_modified_by_id INTEGER,
+        provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
         added_quantity INTEGER
 )
@@ -304,15 +319,15 @@ AS
 $$
 BEGIN
     IF
-        (SELECT fn_require_authentication(
+        (SELECT credentials_authentication(
             provided_user_role,
             provided_user_password,
-            provided_last_modified_by_id)) IS TRUE
+            provided_last_modified_by_emp_id)) IS TRUE
     THEN
         UPDATE
             inventory
         SET
-            last_modified_by_id = provided_last_modified_by_id,
+            last_modified_by_emp_id = provided_last_modified_by_emp_id,
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
@@ -335,7 +350,7 @@ CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory_with_password(
         provided_user_role VARCHAR(30),
         provided_user_password VARCHAR(9),
-        provided_id_of_employee INTEGER,
+        provided_id_of_employee CHAR(5),
         provided_jewelry_id INTEGER,
         requested_quantity INTEGER
 )
@@ -345,7 +360,7 @@ DECLARE
     current_quantity INTEGER;
 BEGIN
         IF
-        (SELECT fn_require_authentication(
+        (SELECT credentials_authentication(
             provided_user_role,
             provided_user_password,
             provided_id_of_employee)) IS TRUE
@@ -363,7 +378,7 @@ BEGIN
                 UPDATE
                     inventory
                 SET
-                    last_modified_by_id = provided_id_of_employee,
+                    last_modified_by_emp_id = provided_id_of_employee,
                     quantity = quantity - requested_quantity,
                     deleted_at = DATE(NOW())
                 WHERE
@@ -447,6 +462,40 @@ EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 
 
+CREATE ROLE merchandising_user_first WITH LOGIN PASSWORD 'merchandising_password_first';
+GRANT INSERT ON jewelries TO merchandising_user_first;
+GRANT INSERT ON discounts TO merchandising_user_first;
+GRANT UPDATE ON discounts TO merchandising_user_first;
+GRANT DELETE ON discounts TO merchandising_user_first;
+
+CREATE ROLE merchandising_user_second WITH LOGIN PASSWORD 'merchandising_password_second';
+GRANT INSERT ON jewelries TO merchandising_user_second;
+GRANT INSERT ON discounts TO merchandising_user_second;
+GRANT UPDATE ON discounts TO merchandising_user_second;
+GRANT DELETE ON discounts TO merchandising_user_second;
+
+CREATE ROLE receiving_inventory_user_first WITH LOGIN PASSWORD 'receiving_inventory_password_first';
+GRANT UPDATE ON inventory TO receiving_inventory_user_first;
+REVOKE INSERT ON jewelries FROM  receiving_inventory_user_first;
+
+
+CREATE ROLE receiving_inventory_user_second WITH LOGIN PASSWORD 'receiving_inventory_password_second';
+GRANT UPDATE ON inventory TO receiving_inventory_user_second;
+
+CREATE ROLE issuing_inventory_user_first WITH LOGIN PASSWORD 'issuing_inventory_password_first';
+GRANT DELETE ON inventory TO issuing_inventory_user_first;
+
+CREATE ROLE issuing_inventory_user_second WITH LOGIN PASSWORD 'issuing_inventory_password_second';
+GRANT DELETE ON inventory TO issuing_inventory_user_second;
+
+
+SELECT
+  EXISTS (
+    SELECT 1
+    FROM pg_auth_members
+    WHERE roleid = 'receiving_inventory_user_second'::regrole
+      AND member = 'receiving_inventory_user_second'::regrole
+  ) AS is_granted;
 
 
 
@@ -455,8 +504,10 @@ EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 
 CALL sp_insert_jewelry_into_jewelries(
+        'issuing_inventory_user_first',
+        'issuing_inventory_password_first',
+        '10006',
         1,
-
         'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
         'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
         19879.00,
