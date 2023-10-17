@@ -1,3 +1,73 @@
+CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
+
+GRANT CREATE ON SCHEMA public TO super_user;
+
+
+
+
+CREATE TABLE
+    users(
+        id SERIAL PRIMARY KEY,
+        user_role VARCHAR(50) NOT NULL,
+        user_password VARCHAR(50) NOT NULL
+);
+
+INSERT INTO
+    users(user_role, user_password)
+VALUES
+    ('super_user', 'super_user_password'),
+    ('merchandising_user_first', 'merchandising_password_first'),
+    ('merchandising_user_second', 'merchandising_password_second'),
+    ('receiving_inventory_user_first', 'receiving_inventory_password_first'),
+    ('receiving_inventory_user_second', 'receiving_inventory_password_second'),
+    ('issuing_inventory_user_first', 'issuing_inventory_password_first'),
+    ('issuing_inventory_user_second', 'issuing_inventory_password_second');
+
+CREATE TABLE
+    departments(
+        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 20001 INCREMENT 1 ) PRIMARY KEY,
+        name VARCHAR(30) NOT NULL
+);
+
+insert into departments (name) values ('Supervisory');
+insert into departments (name) values ('Merchandising');
+insert into departments (name) values ('Receiving Inventory');
+insert into departments (name) values ('Issuing  Inventory');
+
+CREATE TABLE
+    employees(
+        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 10001 INCREMENT 1 ) PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        department_id INTEGER NOT NULL,
+        first_name VARCHAR(30) NOT NULL,
+        last_name VARCHAR(30) NOT NULL,
+        email VARCHAR(30) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        employed_at DATE DEFAULT DATE(NOW()),
+
+        CONSTRAINT fk_employees_users
+            FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
+
+        CONSTRAINT fk_employees_departments
+             FOREIGN KEY (department_id)
+             REFERENCES departments(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE
+);
+
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (1, 20001, 'Beatris', 'Ilieve', 'beatris@icloud.com', '000-000-000');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (2, 20002, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (3, 20002, 'PerrY', 'Oldersley', 'poldersley0@army.mil', '231-393-2278');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (4, 20003, 'Rose', 'Obrey', 'r@obrey.net', '631-969-8114');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (5, 20003,'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (6, 20004, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
+insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (7, 20004, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473');
+
+
 CREATE OR REPLACE FUNCTION
     fn_require_authentication(
     provided_user_role VARCHAR(30),
@@ -13,13 +83,19 @@ BEGIN
     IF
         provided_user_id = (
             SELECT
-                id
+                u.id
             FROM
-                users
+                users AS u
+            JOIN
+                employees
+            ON
+                u.id = employees.user_id
             WHERE
                  user_role = provided_user_role
                         AND
                  user_password = provided_user_password
+                        AND
+                is_active IS TRUE
             )
     THEN
         is_authenticated := TRUE;
@@ -32,80 +108,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
-CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
-
-GRANT CREATE ON SCHEMA public TO super_user;
-
-CREATE ROLE merchandising_user WITH LOGIN PASSWORD 'merchandising_password';
-GRANT INSERT ON jewelries TO merchandising_user;
-GRANT INSERT ON discounts TO merchandising_user;
-GRANT UPDATE ON discounts TO merchandising_user;
-GRANT DELETE ON discounts TO merchandising_user;
-
-CREATE ROLE receiving_inventory_user WITH LOGIN PASSWORD 'receiving_inventory_password';
-GRANT UPDATE ON inventory TO receiving_inventory_user;
-
-CREATE ROLE issuing_inventory_user WITH LOGIN PASSWORD 'issuing_inventory_password';
-GRANT DELETE ON inventory TO issuing_inventory_user;
-
-CREATE TABLE
-    users(
-        id SERIAL PRIMARY KEY,
-        user_role VARCHAR(30) NOT NULL,
-        user_password VARCHAR(30) NOT NULL
-);
-
-INSERT INTO
-    users(user_role, user_password)
-VALUES
-    ('super_user', 'super_user_password'),
-    ('merchandising_user', 'merchandising_password'),
-    ('receiving_inventory_user', 'receiving_inventory_password'),
-    ('issuing_inventory_user', 'issuing_inventory_password');
-
-
-CREATE TABLE
-    departments(
-        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 20001 INCREMENT 1 ) PRIMARY KEY,
-        name VARCHAR(30) NOT NULL
-);
-
-insert into departments (name) values ('Merchandising');
-insert into departments (name) values ('Receiving Inventory');
-insert into departments (name) values ('Issuing  Inventory');
-
-
-
-
-CREATE TABLE
-    employees(
-        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 10001 INCREMENT 1 ) PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        is_active BOOLEAN NOT NULL,
-        department_id INTEGER NOT NULL,
-        first_name VARCHAR(30) NOT NULL,
-        last_name VARCHAR(30) NOT NULL,
-        email VARCHAR(30) NOT NULL,
-        phone_number VARCHAR(20) NOT NULL,
-        employed_at DATE NOT NULL,
-
-        CONSTRAINT fk_employees_users
-            FOREIGN KEY (user_id)
-            REFERENCES users(id)
-            ON UPDATE CASCADE
-            ON DELETE CASCADE,
-
-        CONSTRAINT fk_employees_departments
-             FOREIGN KEY (department_id)
-             REFERENCES departments(id)
-             ON UPDATE CASCADE
-             ON DELETE CASCADE
-);
-
-insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20001, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278', '5/9/2023');
-insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20002, 'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114', '12/26/2022');
-insert into employees (department_id, first_name, last_name, email, phone_number, employed_at) values (20003, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473', '9/11/2023');
 
 CREATE TABLE
     types(
@@ -267,22 +269,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_insert_jewelry_into_jewelries(
-        'merchandising_user',
-        'merchandising_password',
-        10002,
-        10,
-        1,
-        1,
-        'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
-        'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
-        19879.00,
-        'ROSE GOLD',
-        '1.75ctw',
-        'SI1-SI2',
-        'G-H',
-        'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-    );
 
 CREATE OR REPLACE PROCEDURE
     sp_add_quantity_into_inventory_with_password(
@@ -295,7 +281,7 @@ CREATE OR REPLACE PROCEDURE
 AS
 $$
 BEGIN
-    IF 
+    IF
         (SELECT fn_require_authentication(
             provided_user_role,
             provided_user_password,
@@ -308,7 +294,7 @@ BEGIN
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
-            jewelries_id = provided_jewelry_id;
+            jewelry_id = provided_jewelry_id;
     ELSE 
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -316,7 +302,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_add_quantity_into_inventory_with_password('123456788', 10002, 1, 10);
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory_with_password(
@@ -331,7 +316,7 @@ $$
 DECLARE
     current_quantity INTEGER;
 BEGIN
-        IF 
+        IF
         (SELECT fn_require_authentication(
             provided_user_role,
             provided_user_password,
@@ -373,7 +358,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_remove_quantity_from_inventory_with_password('123456789', 10003, 1, 9);
 
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_entity_into_inventory_records_on_update()
@@ -389,9 +373,9 @@ BEGIN
             WHEN OLD.quantity > NEW.quantity THEN 'Delete'
         END);
     INSERT INTO
-            jewelry_records(inventory_id, employee_id, operation, date)
+            inventory_records(inventory_id, operation, date)
     VALUES
-        (OLD.id, NEW.last_modified_by_id, operation_type, DATE(NOW()));
+        (OLD.id, operation_type, DATE(NOW()));
     RETURN NEW;
 END;
 $$
@@ -415,9 +399,9 @@ DECLARE
 BEGIN
     operation_type := 'Create';
     INSERT INTO
-            jewelry_records(inventory_id, employee_id, operation, date)
+            inventory_records(inventory_id, operation, date)
     VALUES
-        (NEW.id, NEW.last_modified_by_id, operation_type, DATE(NOW()));
+        (NEW.id,  operation_type, DATE(NOW()));
     RETURN NEW;
 END;
 $$
@@ -431,23 +415,26 @@ FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 
+CREATE ROLE merchandising_user WITH LOGIN PASSWORD 'merchandising_password';
+GRANT INSERT ON jewelries TO merchandising_user;
+GRANT INSERT ON discounts TO merchandising_user;
+GRANT UPDATE ON discounts TO merchandising_user;
+GRANT DELETE ON discounts TO merchandising_user;
+
+CREATE ROLE receiving_inventory_user WITH LOGIN PASSWORD 'receiving_inventory_password';
+GRANT UPDATE ON inventory TO receiving_inventory_user;
+
+CREATE ROLE issuing_inventory_user WITH LOGIN PASSWORD 'issuing_inventory_password';
+GRANT DELETE ON inventory TO issuing_inventory_user;
 
 
 
-
-INSERT INTO
-    jewelries(
-        category_id,
-        name,
-        image_url,
-        price,
-        metal_color,
-        diamond_carat_weight,
-        diamond_clarity,
-        diamond_color,
-        description
-    )
-VALUES (
+CALL sp_insert_jewelry_into_jewelries(
+        'merchandising_user',
+        'merchandising_password',
+        10002,
+        10,
+        1,
         1,
         'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
         'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
@@ -457,314 +444,8 @@ VALUES (
         'SI1-SI2',
         'G-H',
         'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-       );
-
-INSERT INTO
-    jewelries(
-        category_id,
-        is_active,
-        name,
-        image_url,
-        price,
-        metal_color,
-        diamond_carat_weight,
-        diamond_clarity,
-        diamond_color,
-        description
-    )
-
-VALUES (
-        2,
-        'https://res.cloudinary.com/deztgvefu/image/upload/v1697351117/Rings/ALMOST_A_HALO_ROUND_DIAMOND_STUD_EARRING_giloj0.webp',
-        'ALMOST A HALO ROUND DIAMOND STUD EARRING',
-        3749.00,
-        'ROSE GOLD',
-        '0.60ctw',
-        'SI1-SI2',
-        'G-H',
-        'This Almost A Halo Round Diamond Stud Earring is the perfect choice for any occasion. It features an 0.60cttw round diamonds set in a half halo design, creating a unique and timeless look. Crafted from the finest materials, this earring is sure to be an eye-catching addition to any collection.'
-       );
-
-INSERT INTO
-    jewelries(
-        category_id,
-        is_active,
-        name,
-        image_url,
-        price,
-        metal_color,
-        diamond_carat_weight,
-        diamond_clarity,
-        diamond_color,
-        description
-    )
-
-VALUES (
-        3,
-        'https://res.cloudinary.com/deztgvefu/image/upload/v1697351447/Rings/DROP_HALO_PENDANT_NECKLACE_u811d4.webp',
-        'DROP HALO PENDANT NECKLACE',
-        17999.00,
-        'ROSE GOLD',
-        '1.17ctw',
-        'SI1-SI2',
-        'G-H',
-        'This Drop Halo Pendant Necklace is a true statement piece. Crafted with a luxurious drop design, it combines stylish elegance with sophisticated charm. Its brilliant gold plating adds timeless sophistication and shine to any outfit. Refined and timeless, this necklace will ensure you stand out in any crowd.'
-       );
-
-INSERT INTO
-    jewelries(
-        category_id,
-        is_active,
-        name,
-        image_url,
-        price,
-        metal_color,
-        diamond_carat_weight,
-        diamond_clarity,
-        diamond_color,
-        description
-    )
-
-VALUES (
-        4,
-        'https://res.cloudinary.com/deztgvefu/image/upload/v1697351731/Rings/CLASSIC_DIAMOND_TENNIS_BRACELET_f1etis.webp',
-        'CLASSIC DIAMOND TENNIS BRACELET',
-        7249.00,
-        'ROSE GOLD',
-        '1.11ctw',
-        'SI1-SI2',
-        'G-H',
-        'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
-       );
-
-
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_insert_discount_with_password(
-    role VARCHAR(30),
-    password VARCHAR(9),
-    provided_last_modified_by INTEGER,
-    provided_name VARCHAR(30),
-    provided_percent INTEGER,
-    provided_categories_jewelries_id INTEGER
-)
-AS
-$$
-BEGIN
-    IF role = 'merchandising_user' AND password = 'merchandising_password' THEN
-        INSERT INTO
-            discounts(last_modified_by_id, categories_jewelries_id, name, percent, created_at, modified_at, deleted_at)
-        VALUES
-            (provided_last_modified_by, provided_categories_jewelries_id, provided_name, provided_percent, DATE(NOW()), NULL, NULL);
-        UPDATE
-            jewelries
-        SET
-            discount_price = regular_price - (regular_price * 10 / provided_percent)
-        WHERE id = (
-            SELECT
-                j.id
-            FROM
-                jewelries AS j
-            JOIN
-                categories_jewelries cj
-            ON
-                jewelries.id = cj.jewelries_id
-            JOIN
-                categories c
-            ON
-                c.id = cj.categories_id
-            WHERE
-                cj.id = provided_categories_jewelries_id
-            );
-
-    ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect password';
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-CALL sp_insert_discount_with_password(
-        '123456787', 10001, 'Discount Name', 10, 1
     );
-
-CREATE OR REPLACE PROCEDURE
-    sp_add_quantity_into_inventory_with_password(
-        password VARCHAR(9),
-        id_of_employee INTEGER,
-        id_of_categories_jewelries INTEGER,
-        added_quantity INTEGER
-)
-AS
-$$
-BEGIN
-    IF password = '123456788' THEN
-        UPDATE
-            inventory
-        SET
-            last_modified_by_id = id_of_employee,
-            quantity = quantity + added_quantity,
-            updated_at = DATE(NOW())
-        WHERE
-            categories_jewelries_id = id_of_categories_jewelries;
-    ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect password';
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
 
 CALL sp_add_quantity_into_inventory_with_password('123456788', 10002, 1, 10);
 
-CREATE OR REPLACE PROCEDURE
-    sp_remove_quantity_from_inventory_with_password(
-        password VARCHAR(9),
-        id_of_employee INTEGER,
-        id_of_categories_jewelries INTEGER,
-        requested_quantity INTEGER
-)
-AS
-$$
-DECLARE
-    current_quantity INTEGER;
-BEGIN
-    IF password = '123456789' THEN
-        current_quantity := (
-            SELECT
-                quantity
-            FROM
-                inventory
-            WHERE
-                categories_jewelries_id = id_of_categories_jewelries
-            );
-        CASE
-            WHEN current_quantity >= requested_quantity THEN
-                UPDATE
-                    inventory
-                SET
-                    last_modified_by_id = id_of_employee,
-                    quantity = quantity - requested_quantity,
-                    deleted_at = DATE(NOW())
-                WHERE
-                    categories_jewelries_id = id_of_categories_jewelries;
-            IF current_quantity - requested_quantity = 0 THEN
-                    UPDATE
-                        jewelries
-                    SET
-                        is_active = FALSE
-                    WHERE
-                        id = (
-                            SELECT
-                                je.id
-                            FROM
-                                jewelries AS je
-
-                            JOIN
-                                categories_jewelries AS catje
-                            ON
-                                je.id = catje.jewelries_id
-                            JOIN
-                                inventory AS inv
-                            ON
-                                catje.id = inv.categories_jewelries_id
-                            WHERE
-                                catje.jewelries_id = je.id
-                                    AND
-                                catje.id = id_of_categories_jewelries
-                            );
-                    END IF;
-                RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
-        END CASE;
-    ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect password';
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
 CALL sp_remove_quantity_from_inventory_with_password('123456789', 10003, 1, 9);
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_update()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type :=
-        (CASE
-            WHEN OLD.quantity < NEW.quantity THEN 'Update'
-            WHEN OLD.quantity > NEW.quantity THEN 'Delete'
-        END);
-    INSERT INTO
-            jewelry_records(inventory_id, employee_id, operation, date)
-    VALUES
-        (OLD.id, NEW.last_modified_by_id, operation_type, DATE(NOW()));
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_update
-AFTER UPDATE ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update();
-
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_jewelry_records_on_create()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type := 'Create';
-    INSERT INTO
-            jewelry_records(inventory_id, employee_id, operation, date)
-    VALUES
-        (NEW.id, NEW.last_modified_by_id, operation_type, DATE(NOW()));
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_create
-AFTER INSERT ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
-
-
-
-
-
--- GRANT DELETE ON employees TO super_user;
---
--- GRANT INSERT ON users TO super_user;
--- GRANT SELECT ON users TO super_user;
--- GRANT UPDATE ON users TO super_user;
--- GRANT DELETE ON users TO super_user;
---
--- GRANT INSERT ON departments TO super_user;
--- GRANT SELECT ON departments TO super_user;
--- GRANT UPDATE ON departments TO super_user;
--- GRANT DELETE ON departments TO super_user;
---
--- GRANT INSERT ON types TO super_user;
--- GRANT SELECT ON types TO super_user;
--- GRANT UPDATE ON types TO super_user;
--- GRANT DELETE ON types TO super_user;
---
--- GRANT SELECT ON jewelries TO super_user;
--- GRANT SELECT ON inventory TO super_user;
--- GRANT SELECT ON inventory_records TO super_user;
--- GRANT SELECT ON discounts TO super_user;
--- GRANT INSERT ON employees TO super_user;
--- GRANT SELECT ON employees TO super_user;
--- GRANT UPDATE ON employees TO super_user;
