@@ -223,27 +223,12 @@ CREATE TABLE
         last_modified_by_emp_id CHAR(5) NOT NULL,
         jewelry_id INTEGER NOT NULL,
         percentage DECIMAL(3,2) NOT NULL,
-        is_active BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ,
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
 
         CONSTRAINT ck_discounts_percentage
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
-);
-
-CREATE TABLE
-    discounts_records(
-        id SERIAL PRIMARY KEY,
-        discount_id INTEGER NOT NULL,
-        operation VARCHAR(6) NOT NULL,
-        date TIMESTAMPTZ DEFAULT DATE(NOW()),
-
-        CONSTRAINT fk_discounts_records_discounts
-                     FOREIGN KEY (discount_id)
-                     REFERENCES discounts(id)
-                     ON UPDATE CASCADE
-                     ON DELETE CASCADE
 );
 
 
@@ -497,10 +482,6 @@ CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving
 CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
 
 
-
-
-
-
 CREATE OR REPLACE PROCEDURE
     sp_insert_percent_into_discounts(
         provided_user_role VARCHAR(30),
@@ -541,8 +522,7 @@ BEGIN
             UPDATE
                 discounts
             SET
-                percentage = provided_percent,
-                is_active = TRUE
+                percentage = provided_percent
             WHERE
                 jewelry_id = provided_jewelry_id;
         ELSE
@@ -559,12 +539,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
-CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.40);
-CALL sp_remove_percent_from_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1);
-
-
-
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_percent_from_discounts(
@@ -606,87 +580,5 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_update()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type :=
-        (CASE
-            WHEN OLD.quantity < NEW.quantity THEN 'Update'
-            WHEN OLD.quantity > NEW.quantity THEN 'Delete'
-        END);
-    INSERT INTO
-            inventory_records(inventory_id, operation, date)
-    VALUES
-        (OLD.id, operation_type, DATE(NOW()));
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_update
-AFTER UPDATE ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update();
-
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_jewelry_records_on_create()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type := 'Create';
-    INSERT INTO
-            inventory_records(inventory_id, operation, date)
-    VALUES
-        (NEW.id,  operation_type, DATE(NOW()));
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_create
-AFTER INSERT ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
-
-
-
-
-
-
-
-
-
-
-
-CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_user_first',
-    'merchandising_password_first',
-    '10002',
-    1,
-    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
-    19879.00,
-    'ROSE GOLD',
-    '1.75ctw',
-    'SI1-SI2',
-    'G-H',
-    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-);
-
-CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
-
-CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
+CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.40);
+CALL sp_remove_percent_from_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1);
