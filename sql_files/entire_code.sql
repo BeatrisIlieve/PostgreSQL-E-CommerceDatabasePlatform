@@ -1,10 +1,3 @@
-CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
-
-GRANT CREATE ON SCHEMA public TO super_user;
-
-
-
-
 CREATE TABLE
     users(
         id SERIAL PRIMARY KEY,
@@ -314,7 +307,7 @@ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE PROCEDURE
-    sp_add_quantity_into_inventory_with_password(
+    sp_add_quantity_into_inventory(
         provided_user_role VARCHAR(30),
         provided_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
@@ -324,6 +317,13 @@ CREATE OR REPLACE PROCEDURE
 AS
 $$
 BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'receiving_inventory', provided_last_modified_by_emp_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
     IF
         (SELECT credentials_authentication(
             provided_user_role,
@@ -333,7 +333,7 @@ BEGIN
         UPDATE
             inventory
         SET
-            last_modified_by_emp_id = provided_last_modified_by_emp_id,
+            last_modified_by_emp_id = provided_last_modified_by_emp_id::INTEGER,
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
@@ -353,10 +353,10 @@ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE PROCEDURE
-    sp_remove_quantity_from_inventory_with_password(
+    sp_remove_quantity_from_inventory(
         provided_user_role VARCHAR(30),
         provided_user_password VARCHAR(9),
-        provided_id_of_employee CHAR(5),
+        provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
         requested_quantity INTEGER
 )
@@ -365,11 +365,18 @@ $$
 DECLARE
     current_quantity INTEGER;
 BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'issuing_inventory', provided_last_modified_by_emp_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
         IF
         (SELECT credentials_authentication(
             provided_user_role,
             provided_user_password,
-            provided_id_of_employee)) IS TRUE
+            provided_last_modified_by_emp_id)) IS TRUE
     THEN
         current_quantity := (
             SELECT
@@ -384,7 +391,7 @@ BEGIN
                 UPDATE
                     inventory
                 SET
-                    last_modified_by_emp_id = provided_id_of_employee,
+                    last_modified_by_emp_id = provided_last_modified_by_emp_id::INTEGER,
                     quantity = quantity - requested_quantity,
                     deleted_at = DATE(NOW())
                 WHERE
@@ -468,56 +475,26 @@ EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 
 
-CREATE ROLE merchandising_user_first WITH LOGIN PASSWORD 'merchandising_password_first';
-GRANT INSERT ON jewelries TO merchandising_user_first;
-GRANT INSERT ON discounts TO merchandising_user_first;
-GRANT UPDATE ON discounts TO merchandising_user_first;
-GRANT DELETE ON discounts TO merchandising_user_first;
-
-CREATE ROLE merchandising_user_second WITH LOGIN PASSWORD 'merchandising_password_second';
-GRANT INSERT ON jewelries TO merchandising_user_second;
-GRANT INSERT ON discounts TO merchandising_user_second;
-GRANT UPDATE ON discounts TO merchandising_user_second;
-GRANT DELETE ON discounts TO merchandising_user_second;
-
-CREATE ROLE receiving_inventory_user_first WITH LOGIN PASSWORD 'receiving_inventory_password_first';
-GRANT UPDATE ON inventory TO receiving_inventory_user_first;
-REVOKE INSERT ON jewelries FROM  receiving_inventory_user_first;
-
-
-CREATE ROLE receiving_inventory_user_second WITH LOGIN PASSWORD 'receiving_inventory_password_second';
-GRANT UPDATE ON inventory TO receiving_inventory_user_second;
-
-CREATE ROLE issuing_inventory_user_first WITH LOGIN PASSWORD 'issuing_inventory_password_first';
-GRANT DELETE ON inventory TO issuing_inventory_user_first;
-
-CREATE ROLE issuing_inventory_user_second WITH LOGIN PASSWORD 'issuing_inventory_password_second';
-GRANT DELETE ON inventory TO issuing_inventory_user_second;
-
-
-
-
-
 
 
 
 
 
 CALL sp_insert_jewelry_into_jewelries(
-        'merchandising_user_first',
-        'merchandising_password_first',
-        '10002',
-        1,
-        'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
-        'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
-        19879.00,
-        'ROSE GOLD',
-        '1.75ctw',
-        'SI1-SI2',
-        'G-H',
-        'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-    );
+    'merchandising_user_first',
+    'merchandising_password_first',
+    '10002',
+    1,
+    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
+    19879.00,
+    'ROSE GOLD',
+    '1.75ctw',
+    'SI1-SI2',
+    'G-H',
+    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
+);
 
-CALL sp_add_quantity_into_inventory_with_password('123456788', 10002, 1, 10);
+CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
 
-CALL sp_remove_quantity_from_inventory_with_password('123456789', 10003, 1, 9);
+CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
