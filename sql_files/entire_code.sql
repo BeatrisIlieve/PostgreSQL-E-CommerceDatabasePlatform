@@ -112,19 +112,20 @@ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION
-    fk_role_authentication(
+    fn_role_authentication(
     department_name VARCHAR(30),
-    provided_emp_id INTEGER
+    provided_emp_id CHAR(5)
 )
 RETURNS BOOLEAN
 AS
 $$
 DECLARE
+    actual_department_name VARCHAR(40);
     is_role_authorised BOOLEAN;
 BEGIN
-    IF
+    actual_department_name :=
         (SELECT
-            u.user_role LIKE department_name || '%'
+            u.user_role
         FROM
             users AS u
         JOIN
@@ -132,7 +133,9 @@ BEGIN
         ON
             u.id = e.user_id
         WHERE
-            e.id = provided_emp_id::INTEGER)
+            e.id = provided_emp_id::INTEGER);
+    IF
+        actual_department_name LIKE department_name || '%'
     THEN
         is_role_authorised := TRUE;
     ELSE
@@ -263,11 +266,14 @@ AS
 $$
 DECLARE current_jewelry_id INTEGER;
 BEGIN
-    IF
-        (SELECT fk_role_authentication(
+    IF NOT
+        (SELECT fn_role_authentication(
                     'merchandising', provided_last_modified_by_emp_id
                     ))
-    AND
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
+    IF
         (SELECT credentials_authentication(
             provided_user_role,
             provided_user_password,
@@ -300,7 +306,7 @@ BEGIN
         VALUES
             (provided_last_modified_by_emp_id::INTEGER, current_jewelry_id, DATE(NOW()), NULL, NULL);
     ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect password';
+        RAISE EXCEPTION 'Authorization failed: Incorrect credentials';
     END IF;
 END;
 $$
@@ -489,13 +495,7 @@ CREATE ROLE issuing_inventory_user_second WITH LOGIN PASSWORD 'issuing_inventory
 GRANT DELETE ON inventory TO issuing_inventory_user_second;
 
 
-SELECT
-  EXISTS (
-    SELECT 1
-    FROM pg_auth_members
-    WHERE roleid = 'receiving_inventory_user_second'::regrole
-      AND member = 'receiving_inventory_user_second'::regrole
-  ) AS is_granted;
+
 
 
 
@@ -504,9 +504,9 @@ SELECT
 
 
 CALL sp_insert_jewelry_into_jewelries(
-        'issuing_inventory_user_first',
-        'issuing_inventory_password_first',
-        '10006',
+        'merchandising_user_first',
+        'merchandising_password_first',
+        '10002',
         1,
         'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
         'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
