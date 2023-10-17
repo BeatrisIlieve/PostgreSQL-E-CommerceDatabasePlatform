@@ -2,7 +2,29 @@ CREATE ROLE super_user WITH LOGIN PASSWORD 'super_password' SUPERUSER;
 
 GRANT CREATE ON SCHEMA public TO super_user;
 
+CREATE ROLE merchandising_user_first WITH LOGIN PASSWORD 'merchandising_password_first';
+GRANT INSERT ON jewelries TO merchandising_user_first;
+GRANT INSERT ON discounts TO merchandising_user_first;
+GRANT UPDATE ON discounts TO merchandising_user_first;
+GRANT DELETE ON discounts TO merchandising_user_first;
 
+CREATE ROLE merchandising_user_second WITH LOGIN PASSWORD 'merchandising_password_second';
+GRANT INSERT ON jewelries TO merchandising_user_second;
+GRANT INSERT ON discounts TO merchandising_user_second;
+GRANT UPDATE ON discounts TO merchandising_user_second;
+GRANT DELETE ON discounts TO merchandising_user_second;
+
+CREATE ROLE receiving_inventory_user_first WITH LOGIN PASSWORD 'receiving_inventory_password_first';
+GRANT UPDATE ON inventory TO receiving_inventory_user_first;
+
+CREATE ROLE receiving_inventory_user_second WITH LOGIN PASSWORD 'receiving_inventory_password_second';
+GRANT UPDATE ON inventory TO receiving_inventory_user_second;
+
+CREATE ROLE issuing_inventory_user_first WITH LOGIN PASSWORD 'issuing_inventory_password_first';
+GRANT DELETE ON inventory TO issuing_inventory_user_first;
+
+CREATE ROLE issuing_inventory_user_second WITH LOGIN PASSWORD 'issuing_inventory_password_second';
+GRANT DELETE ON inventory TO issuing_inventory_user_second;
 
 
 CREATE TABLE
@@ -127,7 +149,7 @@ CREATE TABLE
     jewelries(
         id SERIAL PRIMARY KEY,
         type_id INTEGER NOT NULL,
-        is_active BOOLEAN NOT NULL,
+        is_active BOOLEAN DEFAULT FALSE,
         name VARCHAR(100) NOT NULL,
         image_url VARCHAR(200) NOT NULL,
         regular_price DECIMAL(7, 2) NOT NULL,
@@ -295,6 +317,12 @@ BEGIN
             updated_at = DATE(NOW())
         WHERE
             jewelry_id = provided_jewelry_id;
+        UPDATE
+            jewelries
+        SET
+            is_active = TRUE
+        WHERE
+            id = provided_jewelry_id;
     ELSE 
         RAISE EXCEPTION 'Authorization failed: Incorrect password';
     END IF;
@@ -415,27 +443,20 @@ FOR EACH ROW
 EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 
-CREATE ROLE merchandising_user WITH LOGIN PASSWORD 'merchandising_password';
-GRANT INSERT ON jewelries TO merchandising_user;
-GRANT INSERT ON discounts TO merchandising_user;
-GRANT UPDATE ON discounts TO merchandising_user;
-GRANT DELETE ON discounts TO merchandising_user;
 
-CREATE ROLE receiving_inventory_user WITH LOGIN PASSWORD 'receiving_inventory_password';
-GRANT UPDATE ON inventory TO receiving_inventory_user;
 
-CREATE ROLE issuing_inventory_user WITH LOGIN PASSWORD 'issuing_inventory_password';
-GRANT DELETE ON inventory TO issuing_inventory_user;
+
+
+
+
+
+
 
 
 
 CALL sp_insert_jewelry_into_jewelries(
-        'merchandising_user',
-        'merchandising_password',
-        10002,
-        10,
         1,
-        1,
+
         'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
         'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
         19879.00,
