@@ -154,6 +154,9 @@ VALUES
     ('Necklace'),
     ('Bracelet');
 
+
+
+
 CREATE TABLE
     jewelries(
         id SERIAL PRIMARY KEY,
@@ -213,17 +216,23 @@ CREATE TABLE
                      ON DELETE CASCADE
 );
 
+
 CREATE TABLE
     discounts(
         id SERIAL PRIMARY KEY,
         last_modified_by_emp_id CHAR(5) NOT NULL,
         jewelry_id INTEGER NOT NULL,
-        percent INTEGER NOT NULL,
+        percentage DECIMAL(3,2) NOT NULL,
         is_active BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ,
-        modified_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT ck_discounts_percentage
+             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
+ALTER TABLE discounts
+ALTER COLUMN percentage TYPE DECIMAL(3,2);
 
 CREATE TABLE
     discounts_records(
@@ -498,3 +507,56 @@ CALL sp_insert_jewelry_into_jewelries(
 CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
 
 CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
+
+
+
+
+
+SELECT(1000.00 - (1000.00 * 0.10));
+SELECT NUMERIC(0.11);
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_insert_percent_into_discounts(
+        provided_user_role VARCHAR(30),
+        provided_user_password VARCHAR(9),
+        provided_last_modified_by_emp_id CHAR(5),
+        provided_jewelry_id INTEGER,
+        provided_percent DECIMAL(3,2)
+)
+AS
+$$
+BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'merchandising', provided_last_modified_by_emp_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
+    IF
+        (SELECT credentials_authentication(
+            provided_user_role,
+            provided_user_password,
+            provided_last_modified_by_emp_id)) IS TRUE
+    THEN
+        INSERT INTO
+            discounts(last_modified_by_emp_id, jewelry_id, percentage, created_at, updated_at, deleted_at)
+        VALUES
+            (
+            provided_last_modified_by_emp_id, provided_jewelry_id, provided_percent, DATE(NOW()), NULL, NULL
+            );
+        UPDATE
+            jewelries
+        SET
+            discount_price = regular_price - (regular_price * provided_percent)
+        WHERE
+            id = provided_jewelry_id;
+    ELSE
+        RAISE EXCEPTION 'Authorization failed: Incorrect credentials';
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.10);
