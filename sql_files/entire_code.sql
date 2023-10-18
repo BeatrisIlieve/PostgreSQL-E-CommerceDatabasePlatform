@@ -1,14 +1,4 @@
-CREATE OR REPLACE PROCEDURE session_cleanup()
-LANGUAGE plpgsql AS $$
-BEGIN
-    UPDATE
-        sessions
-    SET
-        is_active = FALSE
-    WHERE expiration_time <= NOW();
-END;
-$$;
-
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
@@ -22,12 +12,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 
 
 CREATE OR REPLACE FUNCTION
@@ -331,14 +315,14 @@ CREATE TABLE
 );
 
 CREATE OR REPLACE PROCEDURE
-    sp_withdraw_money(
+    sp_transfer_money(
         customer_id INTEGER,
         available_balance DECIMAL(8, 2),
         needed_balance DECIMAL(8, 2)
 )
 AS
 $$
-DECLARE 
+DECLARE
     insufficient_balance CONSTANT TEXT := ('Insufficient balance to complete the transaction. Needed amount: %', needed_balance);
 BEGIN
     IF
@@ -352,18 +336,20 @@ BEGIN
             current_balance = current_balance - needed_balance
         WHERE
             id = customer_id;
-        
+
         INSERT INTO
             transactions
         VALUES
             (
              amount = needed_balance,
              status = 'Completed'
-            );     
+            );
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
+
+
 
 
 
@@ -434,7 +420,7 @@ BEGIN
         WHERE
             s.id = provided_session_id
     );
-    CALL sp_withdraw_money(provided_customer_id, provided_current_balance, total_amount);
+    CALL sp_transfer_money(provided_customer_id, provided_current_balance, total_amount);
 END;
 $$
 LANGUAGE plpgsql;
