@@ -1,11 +1,37 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+CREATE OR REPLACE FUNCTION
+    fn_register_user(
+    provided_email VARCHAR(30),
+    provided_password VARCHAR(15)
+)
+RETURNS VOID
+AS
+$$
+DECLARE
+    hashed_password VARCHAR;
+BEGIN
+    hashed_password := crypt(provided_password, gen_salt('bf'));
+    
+    INSERT INTO
+        customer_users(email, password, created_at, updated_at, deleted_at)
+    VALUES ( provided_email, hashed_password , DATE(NOW()), NULL, NULL);
+
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
 CREATE TABLE
     customer_users(
         id SERIAL PRIMARY KEY NOT NULL,
         email VARCHAR(30) NOT NULL,
         password VARCHAR(15) NOT NULL,
         created_at DATE NOT NULL,
-        updated_at DATE NOT NULL,
-        deleted_at DATE NOT NULL
+        updated_at DATE,
+        deleted_at DATE
 );
 
 CREATE TABLE
