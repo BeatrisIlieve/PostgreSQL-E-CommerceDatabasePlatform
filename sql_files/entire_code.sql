@@ -1,3 +1,15 @@
+CREATE OR REPLACE PROCEDURE session_cleanup()
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE
+        sessions
+    SET
+        is_active = FALSE
+    WHERE expiration_time <= NOW();
+END;
+$$;
+
+
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
     provided_error_message VARCHAR(300)
@@ -15,6 +27,7 @@ LANGUAGE plpgsql;
 
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 
 
 CREATE OR REPLACE FUNCTION
@@ -133,7 +146,7 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
-    customer_id INTEGER
+    provided_customer_id INTEGER
 )
 AS
 $$
@@ -142,7 +155,7 @@ DECLARE
     expiration_time TIMESTAMPTZ;
 BEGIN
     session_data := jsonb_build_object(
-        'customer_id', customer_id,
+        'customer_id', provided_customer_id,
         'created_at', NOW()
     );
     expiration_time := NOW() + INTERVAL '1 HOUR';
@@ -150,6 +163,36 @@ BEGIN
         sessions(customer_id, session_data, expiration_time)
     VALUES
         (customer_id, session_data, expiration_time);
+    UPDATE
+        sessions
+    SET
+        is_active = TRUE
+    WHERE
+        customer_id = provided_customer_id;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION
+    sp_remove_from_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
+BEGIN
+    IF NOT (
+        SELECT
+            expiration_time
+        FROM
+            sessions
+        ) < NOW()
+    THEN
+        SELECT
+            fn_raise_error_message(session_has_expired);
+    ELSE
+        CALL sp_return_back_quantity_to_inventory(provided_session_id, provided_jewelry_id, provided_quantity);
+    END IF;
 END;
 $$
 LANGUAGE plpgsql;
@@ -191,10 +234,49 @@ LANGUAGE plpgsql;
 
 
 
+CREATE OR REPLACE PROCEDURE
+    sp_return_back_quantity_to_inventory(
+        in_session_id INTEGER,
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER
+)
+AS
+$$
+BEGIN
+    UPDATE
+        inventory
+    SET
+        employee_or_session_id = in_session_id,
+        quantity = quantity + requested_quantity,
+        deleted_at = DATE(NOW())
+    WHERE
+        jewelry_id = in_jewelry_id;
+    IF(
+        SELECT
+            is_active
+        FROM
+            jewelries
+        WHERE
+            id = in_jewelry_id
+        ) IS FALSE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = TRUE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory(
-        in_session_id CHAR(5),
+        in_session_id INTEGER,
         in_jewelry_id INTEGER,
         requested_quantity INTEGER
 )
@@ -240,10 +322,122 @@ END;
 $$
 LANGUAGE plpgsql;
 
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
+        status VARCHAR(15)
+);
+
+CREATE OR REPLACE PROCEDURE
+    sp_withdraw_money(
+        customer_id INTEGER,
+        available_balance DECIMAL(8, 2),
+        needed_balance DECIMAL(8, 2)
+)
+AS
+$$
+DECLARE 
+    insufficient_balance CONSTANT TEXT := ('Insufficient balance to complete the transaction. Needed amount: %', needed_balance);
+BEGIN
+    IF
+        (available_balance - needed_balance) < 0
+    THEN
+        CALL fn_raise_error_message(insufficient_balance);
+    ELSE
+        UPDATE
+            customer_details
+        SET
+            current_balance = current_balance - needed_balance
+        WHERE
+            id = customer_id;
+        
+        INSERT INTO
+            transactions
+        VALUES
+            (
+             amount = needed_balance,
+             status = 'Completed'
+            );     
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+
+
+
 
 
 CREATE OR REPLACE PROCEDURE
-    sp_complete_order()
+    sp_complete_order(
+    provided_session_id INTEGER,
+    provided_first_name VARCHAR(30),
+    provided_last_name VARCHAR(30),
+    provided_phone_number VARCHAR(20),
+    provided_current_balance DECIMAL(8, 2)
+)
+AS
+$$
+DECLARE
+    total_amount DECIMAL(8, 2);
+    provided_customer_id INTEGER;
+    final_price DECIMAL (8, 2);
+    order_id INTEGER;
+BEGIN
+    provided_customer_id := (
+            SELECT
+                cd.id
+            FROM
+                customer_details AS cd
+            JOIN
+                customer_users AS cu
+            ON
+                cd.customer_user_id = cu.id
+            JOIN
+                sessions AS s
+            ON
+                cu.id = s.customer_id
+            WHERE
+                s.id = provided_session_id
+            );
+
+    UPDATE
+        customer_details
+    SET
+        first_name = provided_first_name,
+        last_name = provided_last_name,
+        phone_number = provided_phone_number,
+        current_balance = provided_current_balance
+    WHERE
+        id = provided_customer_id;
+
+    total_amount := (
+        SELECT
+            SUM(CASE
+                WHEN j.discount_price IS NULL THEN j.regular_price
+                ELSE j.discount_price
+            END) AS final_price
+        FROM
+            jewelries AS j
+        JOIN
+            shopping_cart AS sc
+        ON
+            j.id = sc.jewelry_id
+        JOIN
+            sessions AS s
+        ON
+            sc.session_id = s.id
+        WHERE
+            s.id = provided_session_id
+    );
+    CALL sp_withdraw_money(provided_customer_id, provided_current_balance, total_amount);
+END;
+$$
+LANGUAGE plpgsql;
 
 
 
@@ -264,6 +458,7 @@ CREATE TABLE
         first_name VARCHAR(30),
         last_name VARCHAR(30),
         phone_number VARCHAR(20),
+        current_balance DECIMAL(8, 2),
 
         CONSTRAINT fk_customers_details_customer_users
                      FOREIGN KEY (customer_user_id)
@@ -275,7 +470,7 @@ CREATE TABLE
 CREATE TABLE
     orders(
         id SERIAL PRIMARY KEY,
-        is_active BOOLEAN NOT NULL,
+        is_completed BOOLEAN,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL,
         deleted_at TIMESTAMPTZ NOT NULL
@@ -294,6 +489,7 @@ INSERT INTO payment_providers (name) VALUES
 CREATE TABLE sessions(
     id SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL,
+    is_active BOOLEAN,
     session_data JSONB NOT NULL,
     expiration_time TIMESTAMPTZ NOT NULL,
 
