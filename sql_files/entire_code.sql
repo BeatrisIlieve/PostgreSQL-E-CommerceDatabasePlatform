@@ -170,30 +170,79 @@ BEGIN
             sessions
         ) < NOW()
     THEN
-        SELECT 
+        SELECT
             fn_raise_error_message(session_has_expired);
     ELSIF (
         SELECT
             is_active
-        FROM 
+        FROM
             jewelries
-        WHERE  
+        WHERE
             id= provided_jewelry_id
         ) IS FALSE
-    THEN 
+    THEN
         SELECT fn_raise_error_message(item_has_been_sold_out);
     ELSE
-        INSERT INTO
-            shopping_cart(session_id, jewelry_id, quantity)
-        VALUES
-            (provided_session_id, provided_jewelry_id, provided_quantity);     
+        CALL sp_remove_quantity_from_inventory(provided_session_id, provided_jewelry_id, provided_quantity)
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE PROCEDURE 
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_remove_quantity_from_inventory(
+        in_session_id CHAR(5),
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER
+)
+AS
+$$
+DECLARE
+    current_quantity INTEGER;
+    not_enough_quantity CONSTANT TEXT := ('There are only % left.', current_quantity);
+BEGIN
+    current_quantity := (
+        SELECT
+            quantity
+        FROM
+            inventory
+        WHERE
+            jewelry_id = in_jewelry_id
+        );
+    IF
+        current_quantity < requested_quantity
+    THEN
+        CALL fn_raise_error_message(not_enough_quantity);
+    ELSE
+        UPDATE
+            inventory
+        SET
+            employee_or_session_id = in_session_id,
+            quantity = quantity - requested_quantity,
+            deleted_at = DATE(NOW())
+        WHERE
+            jewelry_id = in_jewelry_id;
+    IF
+        current_quantity - requested_quantity = 0
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = FALSE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE PROCEDURE
     sp_complete_order()
 
 
@@ -499,18 +548,12 @@ CREATE TABLE
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
-        last_modified_by_emp_id INTEGER NOT NULL,
+        employee_or_session_id INTEGER NOT NULL,
         jewelry_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
-
-        CONSTRAINT fk_inventory_staff_staff_users
-                     FOREIGN KEY (last_modified_by_emp_id)
-                     REFERENCES employees(id)
-                     ON UPDATE CASCADE
-                     ON DELETE CASCADE,
 
         CONSTRAINT fk_inventory_jewelries
                 FOREIGN KEY (jewelry_id)
@@ -604,7 +647,7 @@ BEGIN
         );
 
         INSERT INTO
-            inventory(last_modified_by_emp_id, jewelry_id, created_at, updated_at, deleted_at)
+            inventory(user_id, jewelry_id, created_at, updated_at, deleted_at)
         VALUES
             (provided_last_modified_by_emp_id::INTEGER, current_jewelry_id, DATE(NOW()), NULL, NULL);
     ELSE
@@ -661,67 +704,67 @@ $$
 LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE PROCEDURE
-    sp_remove_quantity_from_inventory(
-        provided_staff_user_role VARCHAR(30),
-        provided_staff_user_password VARCHAR(9),
-        provided_last_modified_by_emp_id CHAR(5),
-        provided_jewelry_id INTEGER,
-        requested_quantity INTEGER
-)
-AS
-$$
-DECLARE
-    current_quantity INTEGER;
-BEGIN
-    IF NOT
-        (SELECT fn_role_authentication(
-                    'issuing_inventory', provided_last_modified_by_emp_id
-                    ))
-    THEN
-        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
-    END IF;
-        IF
-        (SELECT credentials_authentication(
-            provided_staff_user_role,
-            provided_staff_user_password,
-            provided_last_modified_by_emp_id)) IS TRUE
-    THEN
-        current_quantity := (
-            SELECT
-                quantity
-            FROM
-                inventory
-            WHERE
-                jewelry_id = provided_jewelry_id
-            );
-        CASE
-            WHEN current_quantity >= requested_quantity THEN
-                UPDATE
-                    inventory
-                SET
-                    last_modified_by_emp_id = provided_last_modified_by_emp_id::INTEGER,
-                    quantity = quantity - requested_quantity,
-                    deleted_at = DATE(NOW())
-                WHERE
-                    jewelry_id = provided_jewelry_id;
-            IF current_quantity - requested_quantity = 0 THEN
-                    UPDATE
-                        jewelries
-                    SET
-                        is_active = FALSE
-                    WHERE
-                        id = provided_jewelry_id;
-            END IF;
-        ELSE
-            RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
-        END CASE;
-    ELSE
-        RAISE EXCEPTION 'Authorization failed: Incorrect password';
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
+-- CREATE OR REPLACE PROCEDURE
+--     sp_remove_quantity_from_inventory(
+--         provided_staff_user_role VARCHAR(30),
+--         provided_staff_user_password VARCHAR(9),
+--         provided_last_modified_by_emp_id CHAR(5),
+--         provided_jewelry_id INTEGER,
+--         requested_quantity INTEGER
+-- )
+-- AS
+-- $$
+-- DECLARE
+--     current_quantity INTEGER;
+-- BEGIN
+--     IF NOT
+--         (SELECT fn_role_authentication(
+--                     'issuing_inventory', provided_last_modified_by_emp_id
+--                     ))
+--     THEN
+--         RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+--     END IF;
+--         IF
+--         (SELECT credentials_authentication(
+--             provided_staff_user_role,
+--             provided_staff_user_password,
+--             provided_last_modified_by_emp_id)) IS TRUE
+--     THEN
+--         current_quantity := (
+--             SELECT
+--                 quantity
+--             FROM
+--                 inventory
+--             WHERE
+--                 jewelry_id = provided_jewelry_id
+--             );
+--         CASE
+--             WHEN current_quantity >= requested_quantity THEN
+--                 UPDATE
+--                     inventory
+--                 SET
+--                     last_modified_by_emp_id = provided_last_modified_by_emp_id::INTEGER,
+--                     quantity = quantity - requested_quantity,
+--                     deleted_at = DATE(NOW())
+--                 WHERE
+--                     jewelry_id = provided_jewelry_id;
+--             IF current_quantity - requested_quantity = 0 THEN
+--                     UPDATE
+--                         jewelries
+--                     SET
+--                         is_active = FALSE
+--                     WHERE
+--                         id = provided_jewelry_id;
+--             END IF;
+--         ELSE
+--             RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
+--         END CASE;
+--     ELSE
+--         RAISE EXCEPTION 'Authorization failed: Incorrect password';
+--     END IF;
+-- END;
+-- $$
+-- LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION
@@ -747,7 +790,7 @@ $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_update
+    tr_insert_new_entity_into_inventory_records_on_update
 AFTER UPDATE ON
     inventory
 FOR EACH ROW
@@ -755,7 +798,7 @@ EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_update()
 
 
 CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_jewelry_records_on_create()
+    trigger_fn_insert_new_entity_into_inventory_records_on_create()
 RETURNS TRIGGER
 AS
 $$
@@ -773,11 +816,11 @@ $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_jewelry_records_on_create
+    tr_insert_new_entity_into_inventory_records_on_create
 AFTER INSERT ON
     inventory
 FOR EACH ROW
-EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
+EXECUTE FUNCTION trigger_fn_insert_new_entity_into_inventory_records_on_create();
 
 
 CREATE OR REPLACE PROCEDURE
