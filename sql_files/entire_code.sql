@@ -155,11 +155,46 @@ $$
 LANGUAGE plpgsql;
 
 
+CREATE OR REPLACE PROCEDURE
+    sp_add_to_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
+    item_has_been_sold_out CONSTANT TEXT := 'This item has been sold out.';
+BEGIN
+    IF NOT (
+        SELECT
+            expiration_time
+        FROM
+            sessions
+        ) < NOW()
+    THEN
+        SELECT 
+            fn_raise_error_message(session_has_expired);
+    ELSIF (
+        SELECT
+            is_active
+        FROM 
+            jewelries
+        WHERE  
+            id= provided_jewelry_id
+        ) IS FALSE
+    THEN 
+        SELECT fn_raise_error_message(item_has_been_sold_out);
+    ELSE
+        INSERT INTO
+            shopping_cart(session_id, jewelry_id, quantity)
+        VALUES
+            (provided_session_id, provided_jewelry_id, provided_quantity);     
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION
-    add_to_shopping_cart()
-
+CREATE OR REPLACE PROCEDURE 
+    sp_complete_order()
 
 
 
