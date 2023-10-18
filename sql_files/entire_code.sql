@@ -1,20 +1,163 @@
 CREATE TABLE
-    users(
+    customer_users(
+        id SERIAL PRIMARY KEY NOT NULL,
+        email VARCHAR(30) NOT NULL,
+        password VARCHAR(15) NOT NULL,
+        created_at DATE NOT NULL,
+        updated_at DATE NOT NULL,
+        deleted_at DATE NOT NULL
+);
+
+CREATE TABLE
+    customer_details(
         id SERIAL PRIMARY KEY,
-        user_role VARCHAR(50) NOT NULL,
-        user_password VARCHAR(50) NOT NULL
+        customer_user_id INTEGER NOT NULL,
+        first_name VARCHAR(30) NOT NULL,
+        last_name VARCHAR(30) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+
+        CONSTRAINT fk_customers_details_customer_users
+                     FOREIGN KEY (customer_user_id)
+                     REFERENCES customer_users(id)
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
+
+CREATE TABLE
+    orders(
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        deleted_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE payment_providers(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO payment_providers (name) VALUES
+    ('PayPal'),
+    ('Amazon Pay'),
+    ('Stripe');
+
+CREATE TABLE sessions(
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    session_data JSONB NOT NULL,
+    expiration_time TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT fk_sessions_customer_users
+                     FOREIGN KEY (customer_id)
+                     REFERENCES customer_users
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
+
+CREATE TABLE
+    shopping_cart(
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+
+        CONSTRAINT ck_shopping_cart_quantity
+            CHECK ( quantity > 0 ),
+
+
+        CONSTRAINT fk_shopping_cart_sessions
+                    FOREIGN KEY (session_id)
+                    REFERENCES sessions(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+
+        CONSTRAINT fk_shopping_cart_jewelries
+                    FOREIGN KEY (jewelry_id)
+                    REFERENCES jewelries(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+
+
+CREATE TABLE
+    orders_details(
+        order_id INTEGER NOT NULL,
+        shopping_cart_id INTEGER NOT NULL,
+        payment_provider_id INTEGER NOT NULL,
+        total_amount DECIMAL(8, 2) NOT NULL,
+
+        CONSTRAINT pk_orders_details
+                    PRIMARY KEY (order_id, shopping_cart_id, payment_provider_id),
+        CONSTRAINT fk_orders_details_orders
+                    FOREIGN KEY (order_id)
+                    REFERENCES orders(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+        CONSTRAINT fk_orders_details_shopping_cart
+                    FOREIGN KEY (shopping_cart_id)
+                    REFERENCES shopping_cart(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+        CONSTRAINT fk_orders_details_payment_providers
+                    FOREIGN KEY (payment_provider_id)
+                    REFERENCES payment_providers(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+
+
+
+CREATE OR REPLACE FUNCTION generate_session_token(user_id INTEGER)
+RETURNS JSONB
+AS $$
+DECLARE
+    session_data JSONB;
+BEGIN
+    session_data := jsonb_build_object(
+        'user_id', user_id,
+        'created_at', NOW()
+    );
+    RETURN session_data;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION authenticate_user(provided_username VARCHAR(50), provided_password VARCHAR(255))
+RETURNS BOOLEAN
+AS $$
+DECLARE
+    is_authenticated BOOLEAN;
+BEGIN
+    SELECT TRUE INTO is_authenticated
+    FROM customer_users
+    WHERE provided_username = email AND provided_password = password;
+
+    RETURN is_authenticated;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+CREATE TABLE
+    staff_users(
+        id SERIAL PRIMARY KEY,
+        staff_user_role VARCHAR(50) NOT NULL,
+        staff_user_password VARCHAR(50) NOT NULL
 );
 
 INSERT INTO
-    users(user_role, user_password)
+    staff_users(staff_user_role, staff_user_password)
 VALUES
-    ('super_user', 'super_user_password'),
-    ('merchandising_user_first', 'merchandising_password_first'),
-    ('merchandising_user_second', 'merchandising_password_second'),
-    ('receiving_inventory_user_first', 'receiving_inventory_password_first'),
-    ('receiving_inventory_user_second', 'receiving_inventory_password_second'),
-    ('issuing_inventory_user_first', 'issuing_inventory_password_first'),
-    ('issuing_inventory_user_second', 'issuing_inventory_password_second');
+    ('super_staff_user', 'super_staff_user_password'),
+    ('merchandising_staff_user_first', 'merchandising_password_first'),
+    ('merchandising_staff_user_second', 'merchandising_password_second'),
+    ('receiving_inventory_staff_user_first', 'receiving_inventory_password_first'),
+    ('receiving_inventory_staff_user_second', 'receiving_inventory_password_second'),
+    ('issuing_inventory_staff_user_first', 'issuing_inventory_password_first'),
+    ('issuing_inventory_staff_user_second', 'issuing_inventory_password_second');
 
 CREATE TABLE
     departments(
@@ -30,7 +173,7 @@ insert into departments (name) values ('Issuing  Inventory');
 CREATE TABLE
     employees(
         id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 10001 INCREMENT 1 ) PRIMARY KEY,
-        user_id INTEGER NOT NULL,
+        staff_user_id INTEGER NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         department_id INTEGER NOT NULL,
         first_name VARCHAR(30) NOT NULL,
@@ -39,9 +182,9 @@ CREATE TABLE
         phone_number VARCHAR(20) NOT NULL,
         employed_at DATE DEFAULT DATE(NOW()),
 
-        CONSTRAINT fk_employees_users
-            FOREIGN KEY (user_id)
-            REFERENCES users(id)
+        CONSTRAINT fk_employees_staff_users
+            FOREIGN KEY (staff_user_id)
+            REFERENCES staff_users(id)
             ON UPDATE CASCADE
             ON DELETE CASCADE,
 
@@ -52,20 +195,20 @@ CREATE TABLE
              ON DELETE CASCADE
 );
 
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (1, 20001, 'Beatris', 'Ilieve', 'beatris@icloud.com', '000-000-000');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (2, 20002, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (3, 20002, 'PerrY', 'Oldersley', 'poldersley0@army.mil', '231-393-2278');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (4, 20003, 'Rose', 'Obrey', 'r@obrey.net', '631-969-8114');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (5, 20003,'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (6, 20004, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
-insert into employees (user_id, department_id, first_name, last_name, email, phone_number) values (7, 20004, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (1, 20001, 'Beatris', 'Ilieve', 'beatris@icloud.com', '000-000-000');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (2, 20002, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (3, 20002, 'PerrY', 'Oldersley', 'poldersley0@army.mil', '231-393-2278');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (4, 20003, 'Rose', 'Obrey', 'r@obrey.net', '631-969-8114');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (5, 20003,'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (6, 20004, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
+insert into employees (staff_user_id, department_id, first_name, last_name, email, phone_number) values (7, 20004, 'Nicky', 'Attewill', 'nattewill5@ebay.com', '342-225-4473');
 
 
 CREATE OR REPLACE FUNCTION
     credentials_authentication(
-    provided_user_role VARCHAR(30),
-    provided_user_password VARCHAR(30),
-    provided_user_id CHAR(5)
+    provided_staff_user_role VARCHAR(30),
+    provided_staff_user_password VARCHAR(30),
+    provided_staff_user_id CHAR(5)
 )
 RETURNS BOOLEAN
 AS
@@ -74,7 +217,7 @@ DECLARE
     id_as_integer INTEGER;
     is_authenticated BOOLEAN;
 BEGIN
-    id_as_integer := provided_user_id::INTEGER;
+    id_as_integer := provided_staff_user_id::INTEGER;
     IF
         id_as_integer = (
             SELECT
@@ -82,13 +225,13 @@ BEGIN
             FROM
                 employees AS e
             JOIN
-                users
+                staff_users
             ON
-                e.user_id = users.id
+                e.staff_user_id = staff_users.id
             WHERE
-                 user_role = provided_user_role
+                 staff_user_role = provided_staff_user_role
                         AND
-                 user_password = provided_user_password
+                 staff_user_password = provided_staff_user_password
                         AND
                 is_active IS TRUE
             )
@@ -118,13 +261,13 @@ DECLARE
 BEGIN
     actual_department_name :=
         (SELECT
-            u.user_role
+            u.staff_user_role
         FROM
-            users AS u
+            staff_users AS u
         JOIN
             employees AS e
         ON
-            u.id = e.user_id
+            u.id = e.staff_user_id
         WHERE
             e.id = provided_emp_id::INTEGER);
     IF
@@ -189,7 +332,7 @@ CREATE TABLE
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
 
-        CONSTRAINT fk_inventory_users
+        CONSTRAINT fk_inventory_staff_staff_users
                      FOREIGN KEY (last_modified_by_emp_id)
                      REFERENCES employees(id)
                      ON UPDATE CASCADE
@@ -234,8 +377,8 @@ CREATE TABLE
 
 CREATE OR REPLACE PROCEDURE
     sp_insert_jewelry_into_jewelries(
-    provided_user_role VARCHAR(30),
-    provided_user_password VARCHAR(9),
+    provided_staff_user_role VARCHAR(30),
+    provided_staff_user_password VARCHAR(9),
     provided_last_modified_by_emp_id CHAR(5),
     provided_type_id INTEGER,
     provided_name VARCHAR(100),
@@ -260,8 +403,8 @@ BEGIN
     END IF;
     IF
         (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
+            provided_staff_user_role,
+            provided_staff_user_password,
             provided_last_modified_by_emp_id)) IS TRUE
     THEN
         INSERT INTO
@@ -300,8 +443,8 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE
     sp_add_quantity_into_inventory(
-        provided_user_role VARCHAR(30),
-        provided_user_password VARCHAR(9),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
         added_quantity INTEGER
@@ -318,8 +461,8 @@ BEGIN
     END IF;
     IF
         (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
+            provided_staff_user_role,
+            provided_staff_user_password,
             provided_last_modified_by_emp_id)) IS TRUE
     THEN
         UPDATE
@@ -346,8 +489,8 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory(
-        provided_user_role VARCHAR(30),
-        provided_user_password VARCHAR(9),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
         requested_quantity INTEGER
@@ -366,8 +509,8 @@ BEGIN
     END IF;
         IF
         (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
+            provided_staff_user_role,
+            provided_staff_user_password,
             provided_last_modified_by_emp_id)) IS TRUE
     THEN
         current_quantity := (
@@ -465,8 +608,8 @@ EXECUTE FUNCTION trigger_fn_insert_new_entity_into_jewelry_records_on_create();
 
 CREATE OR REPLACE PROCEDURE
     sp_insert_percent_into_discounts(
-        provided_user_role VARCHAR(30),
-        provided_user_password VARCHAR(9),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
         provided_percent DECIMAL(3,2)
@@ -483,8 +626,8 @@ BEGIN
     END IF;
     IF
         (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
+            provided_staff_user_role,
+            provided_staff_user_password,
             provided_last_modified_by_emp_id)) IS TRUE
     THEN
         UPDATE
@@ -524,8 +667,8 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE
     sp_remove_percent_from_discounts(
-        provided_user_role VARCHAR(30),
-        provided_user_password VARCHAR(9),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER
 )
@@ -541,8 +684,8 @@ BEGIN
     END IF;
         IF
         (SELECT credentials_authentication(
-            provided_user_role,
-            provided_user_password,
+            provided_staff_user_role,
+            provided_staff_user_password,
             provided_last_modified_by_emp_id)) IS TRUE
     THEN
         UPDATE
@@ -566,7 +709,7 @@ LANGUAGE plpgsql;
 
 
 CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_user_first',
+    'merchandising_staff_user_first',
     'merchandising_password_first',
     '10002',
     1,
@@ -580,10 +723,54 @@ CALL sp_insert_jewelry_into_jewelries(
     'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
 );
 
-CALL sp_add_quantity_into_inventory('receiving_inventory_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
+CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
 
-CALL sp_remove_quantity_from_inventory('issuing_inventory_user_first', 'issuing_inventory_password_first', '10006', 1, 10);
+CALL sp_remove_quantity_from_inventory('issuing_inventory_staff_user_first', 'issuing_inventory_password_first', '10006', 1, 90);
 
-CALL sp_insert_percent_into_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1, 0.20);
+CALL sp_insert_percent_into_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1, 0.20);
 
-CALL sp_remove_percent_from_discounts('merchandising_user_first', 'merchandising_password_first', '10002', 1);
+CALL sp_remove_percent_from_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1);
+
+
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_is_item_sold_out(
+        staff_user_role VARCHAR(50),
+        staff_user_password VARCHAR(50),
+        provided_super_staff_user_id CHAR(5),
+        is_item_sold_out BOOLEAN
+)
+RETURNS TABLE(
+    type_id INTEGER,
+    name VARCHAR(100),
+    regular_price DECIMAL(7, 2)
+)
+AS
+$$
+BEGIN
+    IF NOT
+        (SELECT fn_role_authentication(
+                    'super', provided_super_staff_user_id
+                    ))
+    THEN
+        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        j.type_id,
+        j.name,
+        j.regular_price
+    FROM
+        jewelries AS j
+    WHERE
+        j.is_active = is_item_sold_out;
+END;
+$$
+LANGUAGE plpgsql;
+
+SELECT trigger_fn_is_item_sold_out('super_staff_user', 'super_staff_user_password', '10001')
+
+
+
+
