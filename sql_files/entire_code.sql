@@ -1,33 +1,172 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-
 CREATE OR REPLACE FUNCTION
-    fn_register_user(
-    provided_email VARCHAR(30),
-    provided_password VARCHAR(15)
+    fn_raise_error_message(
+    provided_error_message VARCHAR(300)
 )
 RETURNS VOID
 AS
 $$
-DECLARE
-    hashed_password VARCHAR;
 BEGIN
-    hashed_password := crypt(provided_password, gen_salt('bf'));
-    
-    INSERT INTO
-        customer_users(email, password, created_at, updated_at, deleted_at)
-    VALUES ( provided_email, hashed_password , DATE(NOW()), NULL, NULL);
-
+    RAISE EXCEPTION '%', provided_error_message;
 END;
 $$
 LANGUAGE plpgsql;
 
 
 
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_register_user(
+    provided_email VARCHAR(30),
+    provided_password VARCHAR(15),
+    provided_verifying_password VARCHAR(15)
+)
+RETURNS VOID
+AS
+$$
+DECLARE
+    email_already_in_use CONSTANT TEXT :=
+        'This email address is already in use. Please use a different email address or try logging in with your existing account.';
+    password_not_secure CONSTANT TEXT :=
+        'The password should contain at least one special character and at least one digit. Please make sure you enter a secure password.';
+    passwords_do_not_match CONSTANT TEXT :=
+        'The password and password verification do not match. Please make sure that both fields contain the same password.';
+    hashed_password VARCHAR;
+BEGIN
+    IF
+        provided_email IN (
+        SELECT
+            email
+        FROM
+            customer_users
+        )
+    THEN
+        SELECT
+            fn_raise_error_message(email_already_in_use);
+    ELSIF
+        provided_password NOT SIMILAR TO '%[!\"#$%&\''()*+,-./:;<=>?@\\[\\]^_`{|}~]%'
+    THEN
+        SELECT
+            fn_raise_error_message(password_not_secure);
+    ELSIF
+        provided_password NOT LIKE provided_verifying_password
+    THEN
+        SELECT
+            fn_raise_error_message(passwords_do_not_match);
+    ELSE
+        hashed_password := crypt(provided_password, gen_salt('bf'));
+
+        INSERT INTO
+            customer_users(email, password, created_at, updated_at, deleted_at)
+        VALUES ( provided_email, hashed_password , DATE(NOW()), NULL, NULL);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_insert_id_into_customer_details()
+RETURNS TRIGGER
+AS
+$$
+BEGIN
+    INSERT INTO
+        customer_details(customer_user_id, first_name, last_name, phone_number)
+    VALUES
+        (NEW.id, NULL, NULL, NULL);
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER
+    tr_insert_id_into_customer_details
+AFTER INSERT ON
+    customer_users
+FOR EACH ROW
+EXECUTE FUNCTION
+    trigger_fn_insert_id_into_customer_details();
+
+
+CREATE OR REPLACE FUNCTION
+    fn_login_user(
+    provided_email VARCHAR(30),
+    provided_password VARCHAR(15)
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    credentials_not_correct CONSTANT TEXT := 'The email or password you entered is incorrect. Please check your email and password, and try again.';
+    is_authenticated BOOLEAN;
+BEGIN
+    IF NOT provided_email AND provided_password IN (
+        SELECT
+            email,
+            password
+        FROM
+            customer_users
+        )
+    THEN
+        SELECT fn_raise_error_message(credentials_not_correct);
+    ELSE
+        CALL sp_generate_session_token((
+                SELECT
+                    id
+                FROM
+                    customer_users
+                WHERE
+                    email = provided_email
+                            AND
+                    password = provided_password
+                           )
+                   );
+    END IF;
+RETURN is_authenticated;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_generate_session_token(
+    customer_id INTEGER
+)
+AS
+$$
+DECLARE
+    session_data JSONB;
+    expiration_time TIMESTAMPTZ;
+BEGIN
+    session_data := jsonb_build_object(
+        'customer_id', customer_id,
+        'created_at', NOW()
+    );
+    expiration_time := NOW() + INTERVAL '1 HOUR';
+    INSERT INTO
+        sessions(customer_id, session_data, expiration_time)
+    VALUES
+        (customer_id, session_data, expiration_time);
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION
+    add_to_shopping_cart()
+
+
+
+
 CREATE TABLE
     customer_users(
         id SERIAL PRIMARY KEY NOT NULL,
-        email VARCHAR(30) NOT NULL,
+        email VARCHAR(30) UNIQUE NOT NULL,
         password VARCHAR(15) NOT NULL,
         created_at DATE NOT NULL,
         updated_at DATE,
@@ -38,9 +177,9 @@ CREATE TABLE
     customer_details(
         id SERIAL PRIMARY KEY,
         customer_user_id INTEGER NOT NULL,
-        first_name VARCHAR(30) NOT NULL,
-        last_name VARCHAR(30) NOT NULL,
-        phone_number VARCHAR(20) NOT NULL,
+        first_name VARCHAR(30),
+        last_name VARCHAR(30),
+        phone_number VARCHAR(20),
 
         CONSTRAINT fk_customers_details_customer_users
                      FOREIGN KEY (customer_user_id)
@@ -52,6 +191,7 @@ CREATE TABLE
 CREATE TABLE
     orders(
         id SERIAL PRIMARY KEY,
+        is_active BOOLEAN NOT NULL,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL,
         deleted_at TIMESTAMPTZ NOT NULL
@@ -133,34 +273,7 @@ CREATE TABLE
 
 
 
-CREATE OR REPLACE FUNCTION generate_session_token(user_id INTEGER)
-RETURNS JSONB
-AS $$
-DECLARE
-    session_data JSONB;
-BEGIN
-    session_data := jsonb_build_object(
-        'user_id', user_id,
-        'created_at', NOW()
-    );
-    RETURN session_data;
-END;
-$$ LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION authenticate_user(provided_username VARCHAR(50), provided_password VARCHAR(255))
-RETURNS BOOLEAN
-AS $$
-DECLARE
-    is_authenticated BOOLEAN;
-BEGIN
-    SELECT TRUE INTO is_authenticated
-    FROM customer_users
-    WHERE provided_username = email AND provided_password = password;
-
-    RETURN is_authenticated;
-END;
-$$ LANGUAGE plpgsql;
 
 
 
