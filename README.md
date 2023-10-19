@@ -397,3 +397,6 @@ INSERT INTO
 VALUES
     (5, 20003, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
 ```
+##### Employees:
+<img width="1229" alt="Screenshot 2023-10-19 at 19 48 24" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/832a2aed-065e-4e46-9718-fca833a30c9a">
+
