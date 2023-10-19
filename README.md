@@ -147,7 +147,7 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 ```
-#### The next Procedure takes care of <ins>Automatically logging-in</ins> customers who have just completed the registration process. It also calls Procedure that simulates generating <ins>Cookie Tokens using JSON format</ins>:
+#### The next Procedure takes care of <ins>Automatically logging-in</ins> customers who have just completed the registration process. It also calls Procedure that simulates generating <ins>Cookie Tokens</ins> using <ins>JSON format</ins>:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_login_user(
@@ -284,11 +284,13 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### The following trigger is doing the magic so we can see the result below:
+#### The following line is doing the magic so we can see the result below:
 ```plpgsql
-SELECT trigger_fn_register_user(
+SELECT fn_register_user(
     'beatris@icloud.com',
     '#6hhhhh',
     '#6hhhhh'
 );
 ```
+##### If we try to enter a password which does not contain at least one special character and one digit:
+<img width="917" alt="Screenshot 2023-10-19 at 19 11 22" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a842a763-0c50-4e90-b17a-361103d73033">
