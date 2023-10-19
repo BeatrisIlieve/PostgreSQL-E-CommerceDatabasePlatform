@@ -481,3 +481,43 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the jewelries table stays empty for now since later on the devoted employees would insert jeelries by their own):
+```plpgsql
+CREATE TABLE
+    types(
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(30) NOT NULL
+);
+
+INSERT INTO
+    types(name)
+VALUES
+    ('Ring'),
+    ('Earring'),
+    ('Necklace'),
+    ('Bracelet');
+
+CREATE TABLE
+    jewelries(
+        id SERIAL PRIMARY KEY,
+        type_id INTEGER NOT NULL,
+        is_active BOOLEAN DEFAULT FALSE,
+        name VARCHAR(100) NOT NULL,
+        image_url VARCHAR(200) NOT NULL,
+        regular_price DECIMAL(7, 2) NOT NULL,
+        discount_price DECIMAL(7, 2),
+        metal_color VARCHAR(12) NOT NULL,
+        diamond_carat_weight VARCHAR(10) NOT NULL,
+        diamond_clarity VARCHAR(10) NOT NULL,
+        diamond_color VARCHAR(5) NOT NULL,
+        description TEXT NOT NULL,
+
+        CONSTRAINT fk_jewelries_types
+             FOREIGN KEY (type_id)
+             REFERENCES types(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE
+);
+```
+<img width="174" alt="Screenshot 2023-10-19 at 20 13 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b042a250-eb0b-464e-b811-7ec1751b073a">
+
