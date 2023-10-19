@@ -1,5 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+
+
+
+
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
     provided_error_message VARCHAR(300)
@@ -196,6 +200,50 @@ CREATE TABLE
 );
 
 
+
+CREATE TABLE
+    customer_users(
+        id SERIAL PRIMARY KEY NOT NULL,
+        email VARCHAR(30) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        created_at DATE NOT NULL,
+        updated_at DATE,
+        deleted_at DATE
+);
+
+
+CREATE TABLE
+    customer_details(
+        id SERIAL PRIMARY KEY,
+        customer_user_id INTEGER NOT NULL,
+        first_name VARCHAR(30),
+        last_name VARCHAR(30),
+        phone_number VARCHAR(20),
+        current_balance DECIMAL(8, 2),
+        payment_provider VARCHAR(100),
+
+        CONSTRAINT fk_customers_details_customer_users
+                     FOREIGN KEY (customer_user_id)
+                     REFERENCES customer_users(id)
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
+
+CREATE TABLE sessions(
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    is_active BOOLEAN,
+    session_data JSONB NOT NULL,
+    expiration_time TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT fk_sessions_customer_users
+                     FOREIGN KEY (customer_id)
+                     REFERENCES customer_users
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
+
+
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
@@ -237,7 +285,7 @@ CREATE TABLE
                      FOREIGN KEY (inventory_id)
                      REFERENCES inventory(id)
                      ON UPDATE CASCADE
-                     ON DELETE CASCADE
+                     ON DELETE SET NULL
 );
 
 
@@ -254,6 +302,89 @@ CREATE TABLE
         CONSTRAINT ck_discounts_percentage
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE
+    shopping_cart(
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+
+        CONSTRAINT ck_shopping_cart_quantity
+            CHECK ( quantity > 0 ),
+
+
+        CONSTRAINT fk_shopping_cart_sessions
+                    FOREIGN KEY (session_id)
+                    REFERENCES sessions(id)
+                    ON UPDATE CASCADE
+                    ON DELETE SET NULL,
+
+        CONSTRAINT fk_shopping_cart_jewelries
+                    FOREIGN KEY (jewelry_id)
+                    REFERENCES jewelries(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+
+
+CREATE TABLE payment_providers(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO payment_providers (name) VALUES
+    ('PayPal'),
+    ('Amazon Pay'),
+    ('Stripe');
+
+
+CREATE TABLE
+    orders(
+        id SERIAL PRIMARY KEY,
+        shopping_cart_id INTEGER NOT NULL,
+        payment_provider_id INTEGER NOT NULL,
+        total_amount DECIMAL(8, 2) NOT NULL,
+
+        CONSTRAINT fk_orders_shopping_cart
+                    FOREIGN KEY (shopping_cart_id)
+                    REFERENCES shopping_cart(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+
+        CONSTRAINT fk_orders_payment_providers
+                    FOREIGN KEY (payment_provider_id)
+                    REFERENCES payment_providers(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
+        status VARCHAR(15),
+
+        CONSTRAINT fk_transactions_orders
+                FOREIGN KEY (order_id)
+                REFERENCES orders(id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
+);
+
+
+
+
 
 
 CREATE OR REPLACE PROCEDURE
@@ -572,122 +703,15 @@ CALL sp_insert_jewelry_into_jewelries(
     'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
 );
 
-CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', 1, 100);
+CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', NULL, 1, 100);
 
 CALL sp_insert_percent_into_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1, 0.20);
 
 CALL sp_remove_percent_from_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1);
 
 
-CREATE TABLE payment_providers(
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
-);
-
-INSERT INTO payment_providers (name) VALUES
-    ('PayPal'),
-    ('Amazon Pay'),
-    ('Stripe');
-
-CREATE TABLE
-    customer_users(
-        id SERIAL PRIMARY KEY NOT NULL,
-        email VARCHAR(30) UNIQUE NOT NULL,
-        password VARCHAR(100) NOT NULL,
-        created_at DATE NOT NULL,
-        updated_at DATE,
-        deleted_at DATE
-);
 
 
-CREATE TABLE
-    customer_details(
-        id SERIAL PRIMARY KEY,
-        customer_user_id INTEGER NOT NULL,
-        first_name VARCHAR(30),
-        last_name VARCHAR(30),
-        phone_number VARCHAR(20),
-        current_balance DECIMAL(8, 2),
-        payment_provider VARCHAR(100) NOT NULL,
-
-        CONSTRAINT fk_customers_details_customer_users
-                     FOREIGN KEY (customer_user_id)
-                     REFERENCES customer_users(id)
-                     ON UPDATE CASCADE
-                     ON DELETE CASCADE
-);
-
-CREATE TABLE sessions(
-    id SERIAL PRIMARY KEY,
-    customer_id INTEGER,
-    is_active BOOLEAN,
-    session_data JSONB NOT NULL,
-    expiration_time TIMESTAMPTZ NOT NULL,
-
-    CONSTRAINT fk_sessions_customer_users
-                     FOREIGN KEY (customer_id)
-                     REFERENCES customer_users
-                     ON UPDATE CASCADE
-                     ON DELETE CASCADE
-);
-
-CREATE TABLE
-    shopping_cart(
-        id SERIAL PRIMARY KEY,
-        session_id INTEGER NOT NULL,
-        jewelry_id INTEGER NOT NULL,
-        quantity INTEGER NOT NULL,
-
-        CONSTRAINT ck_shopping_cart_quantity
-            CHECK ( quantity > 0 ),
-
-
-        CONSTRAINT fk_shopping_cart_sessions
-                    FOREIGN KEY (session_id)
-                    REFERENCES sessions(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE,
-
-        CONSTRAINT fk_shopping_cart_jewelries
-                    FOREIGN KEY (jewelry_id)
-                    REFERENCES jewelries(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE
-);
-
-
-CREATE TABLE
-    orders(
-        id SERIAL PRIMARY KEY,
-        shopping_cart_id INTEGER NOT NULL,
-        payment_provider_id INTEGER NOT NULL,
-        total_amount DECIMAL(8, 2) NOT NULL,
-
-        CONSTRAINT fk_orders_details_shopping_cart
-                    FOREIGN KEY (shopping_cart_id)
-                    REFERENCES shopping_cart(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE,
-        CONSTRAINT fk_orders_details_payment_providers
-                    FOREIGN KEY (payment_provider_id)
-                    REFERENCES payment_providers(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE
-);
-
-CREATE TABLE
-    transactions(
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER,
-        amount DECIMAL (8, 2),
-        status VARCHAR(15),
-
-        CONSTRAINT fk_transactions_orders
-                FOREIGN KEY (order_id)
-                REFERENCES orders(id)
-                ON UPDATE CASCADE
-                ON DELETE CASCADE
-);
 
 
 
@@ -750,9 +774,9 @@ AS
 $$
 BEGIN
     INSERT INTO
-        customer_details(customer_user_id, first_name, last_name, phone_number, current_balance, payment_provider)
+        customer_details(customer_user_id)
     VALUES
-        (NEW.id, NULL, NULL, NULL);
+        (NEW.id);
     RETURN NEW;
 END;
 $$
@@ -767,7 +791,7 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 
-SELECT trigger_fn_register_user('b@icloud.com', 'S@3ana3a', 'S@3ana3a');
+
 
 
 
@@ -837,7 +861,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_login_user('b@icloud.com', 'S@3ana3a');
+-- CALL sp_login_user('b@icloud.com', 'S@3ana3a');
 
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
@@ -879,6 +903,8 @@ END;
 $$
 LANGUAGE plpgsql;
 
+
+SELECT trigger_fn_register_user('b@icloud.com', 'S@3ana3a', 'S@3ana3a');
 
 
 CREATE OR REPLACE PROCEDURE
@@ -925,7 +951,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_add_to_shopping_cart(29, 1, 1);
+CALL sp_add_to_shopping_cart(30, 1, 1);
 
 
 
@@ -1068,6 +1094,7 @@ DECLARE
     current_total_amount DECIMAL(8, 2);
     provided_customer_id INTEGER;
     current_shopping_cart_id INTEGER;
+    current_payment_provider_id INTEGER;
 BEGIN
     IF
         provided_payment_provider NOT IN (
@@ -1077,8 +1104,17 @@ BEGIN
             payment_providers
         )
     THEN
-        CALL fn_raise_error_message(provider_not_supported);
+        SELECT fn_raise_error_message(provider_not_supported);
     END IF;
+
+    current_payment_provider_id := (
+        SELECT
+            id
+        FROM
+            payment_providers
+        WHERE
+            name = provided_payment_provider
+        );
 
     provided_customer_id := (
             SELECT
@@ -1143,7 +1179,7 @@ BEGIN
         INSERT INTO orders
         (shopping_cart_id, payment_provider_id, total_amount)
     VALUES
-        (current_shopping_cart_id, provided_payment_provider, current_total_amount);
+        (current_shopping_cart_id, current_payment_provider_id, current_total_amount);
 
     CALL sp_transfer_money(provided_customer_id, provided_current_balance, current_total_amount);
 END;
@@ -1151,7 +1187,7 @@ $$
 LANGUAGE plpgsql;
 
 
-CALL sp_complete_order(29, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
+CALL sp_complete_order(30, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
 
 
 CREATE OR REPLACE PROCEDURE
