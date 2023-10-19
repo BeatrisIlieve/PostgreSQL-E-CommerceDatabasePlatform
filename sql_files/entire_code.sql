@@ -320,7 +320,7 @@ CREATE TABLE
         quantity INTEGER NOT NULL,
 
         CONSTRAINT ck_shopping_cart_quantity
-            CHECK ( quantity > 0 ),
+            CHECK ( quantity >= 0 ),
 
 
         CONSTRAINT fk_shopping_cart_sessions
@@ -354,18 +354,19 @@ CREATE TABLE
         shopping_cart_id INTEGER NOT NULL,
         payment_provider_id INTEGER NOT NULL,
         total_amount DECIMAL(8, 2) NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
 
         CONSTRAINT fk_orders_shopping_cart
                     FOREIGN KEY (shopping_cart_id)
                     REFERENCES shopping_cart(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE,
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT ,
 
         CONSTRAINT fk_orders_payment_providers
                     FOREIGN KEY (payment_provider_id)
                     REFERENCES payment_providers(id)
-                    ON UPDATE CASCADE
-                    ON DELETE CASCADE
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT
 );
 
 CREATE TABLE
@@ -378,8 +379,8 @@ CREATE TABLE
         CONSTRAINT fk_transactions_orders
                 FOREIGN KEY (order_id)
                 REFERENCES orders(id)
-                ON UPDATE CASCADE
-                ON DELETE CASCADE
+                ON UPDATE RESTRICT
+                ON DELETE RESTRICT
 );
 
 
@@ -688,26 +689,6 @@ $$
 LANGUAGE plpgsql;
 
 
-CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_staff_user_first',
-    'merchandising_password_first',
-    '10002',
-    1,
-    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
-    19879.00,
-    'ROSE GOLD',
-    '1.75ctw',
-    'SI1-SI2',
-    'G-H',
-    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
-);
-
-CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', NULL, 1, 100);
-
-CALL sp_insert_percent_into_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1, 0.20);
-
-CALL sp_remove_percent_from_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1);
 
 
 
@@ -861,7 +842,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
--- CALL sp_login_user('b@icloud.com', 'S@3ana3a');
+
 
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
@@ -940,18 +921,34 @@ BEGIN
     THEN
         SELECT fn_raise_error_message(item_has_been_sold_out);
     ELSE
-        INSERT INTO
-            shopping_cart(session_id, jewelry_id, quantity)
-        VALUES
-            (provided_session_id, provided_jewelry_id, provided_quantity);
-
-        CALL sp_remove_quantity_from_inventory(provided_session_id, provided_jewelry_id, provided_quantity);
+        IF provided_jewelry_id IN (
+            SELECT
+                jewelry_id
+            FROM
+                shopping_cart
+            WHERE
+                session_id = provided_session_id
+            )
+        THEN
+            UPDATE
+                shopping_cart
+            SET
+                quantity = quantity + provided_quantity
+            WHERE
+                jewelry_id = provided_jewelry_id;
+        ELSE
+            INSERT INTO
+                shopping_cart(session_id, jewelry_id, quantity)
+            VALUES
+                (provided_session_id, provided_jewelry_id, provided_quantity);
+        END IF;
+        CALL sp_remove_quantity_from_inventory( provided_jewelry_id, provided_quantity);
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_add_to_shopping_cart(30, 1, 1);
+
 
 
 
@@ -1034,7 +1031,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CALL sp_remove_from_shopping_cart(29, 1, 1);
+
 
 
 
@@ -1052,7 +1049,7 @@ BEGIN
     SET
         session_id = in_session_id,
         quantity = quantity + requested_quantity,
-        deleted_at = DATE(NOW())
+        updated_at = DATE(NOW())
     WHERE
         jewelry_id = in_jewelry_id;
     IF(
@@ -1071,6 +1068,12 @@ BEGIN
         WHERE
             id = in_jewelry_id;
     END IF;
+    UPDATE
+        shopping_cart
+    SET
+        quantity = quantity - requested_quantity
+    WHERE
+        jewelry_id = in_jewelry_id;
 END;
 $$
 LANGUAGE plpgsql;
@@ -1139,7 +1142,8 @@ BEGIN
         first_name = provided_first_name,
         last_name = provided_last_name,
         phone_number = provided_phone_number,
-        current_balance = provided_current_balance
+        current_balance = provided_current_balance,
+        payment_provider = provided_payment_provider
     WHERE
         id = provided_customer_id;
 
@@ -1187,7 +1191,7 @@ $$
 LANGUAGE plpgsql;
 
 
-CALL sp_complete_order(30, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
+
 
 
 CREATE OR REPLACE PROCEDURE
@@ -1233,18 +1237,61 @@ BEGIN
                 s.customer_id = cu.id
             WHERE
                 cu.id = provided_customer_id
+                        AND
+                o.is_completed = FALSE
             );
 
+            UPDATE
+                orders
+            SET
+                is_completed = True
+            WHERE
+                id = current_order_id;
 
-        INSERT INTO
-            transactions(order_id, amount, status)
-        VALUES
-            (
-             current_order_id,
-             needed_balance,
-             'Completed'
-            );
+
+            INSERT INTO
+                transactions(order_id, amount, status)
+            VALUES
+                (
+                 current_order_id,
+                 needed_balance,
+                 'Completed'
+                );
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
+
+
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    1,
+    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
+    19879.00,
+    'ROSE GOLD',
+    '1.75ctw',
+    'SI1-SI2',
+    'G-H',
+    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
+);
+
+CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', NULL, 1, 100);
+
+CALL sp_insert_percent_into_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1, 0.20);
+
+CALL sp_remove_percent_from_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1);
+
+
+
+
+
+CALL sp_add_to_shopping_cart(1, 1, 1);
+
+CALL sp_remove_from_shopping_cart(1, 1, 1);
+
+CALL sp_complete_order(1, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
+
+CALL sp_login_user('b@icloud.com', 'S@3ana3a');
