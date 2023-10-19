@@ -3,7 +3,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
 
-
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
     provided_error_message VARCHAR(300)
@@ -310,14 +309,12 @@ CREATE TABLE
 
 
 
-
-
 CREATE TABLE
     shopping_cart(
         id SERIAL PRIMARY KEY,
-        session_id INTEGER NOT NULL,
-        jewelry_id INTEGER NOT NULL,
-        quantity INTEGER NOT NULL,
+        session_id INTEGER DEFAULT NULL,
+        jewelry_id INTEGER DEFAULT NULL,
+        quantity INTEGER DEFAULT 0,
 
         CONSTRAINT ck_shopping_cart_quantity
             CHECK ( quantity >= 0 ),
@@ -351,7 +348,7 @@ INSERT INTO payment_providers (name) VALUES
 CREATE TABLE
     orders(
         id SERIAL PRIMARY KEY,
-        shopping_cart_id INTEGER NOT NULL,
+        shopping_cart_id INTEGER,
         payment_provider_id INTEGER NOT NULL,
         total_amount DECIMAL(8, 2) NOT NULL,
         is_completed BOOLEAN DEFAULT FALSE,
@@ -369,12 +366,12 @@ CREATE TABLE
                     ON DELETE RESTRICT
 );
 
+
 CREATE TABLE
     transactions(
         id SERIAL PRIMARY KEY,
         order_id INTEGER,
         amount DECIMAL (8, 2),
-        status VARCHAR(15),
 
         CONSTRAINT fk_transactions_orders
                 FOREIGN KEY (order_id)
@@ -1165,7 +1162,7 @@ BEGIN
             SUM(CASE
                 WHEN j.discount_price IS NULL THEN j.regular_price
                 ELSE j.discount_price
-            END) AS final_price
+            END) * sc.quantity AS final_price
         FROM
             jewelries AS j
         JOIN
@@ -1178,9 +1175,15 @@ BEGIN
             sc.session_id = s.id
         WHERE
             s.id = provided_session_id
+        GROUP BY
+            CASE
+                WHEN j.discount_price IS NULL THEN j.regular_price
+                ELSE j.discount_price
+            END,
+            sc.quantity
     );
 
-        INSERT INTO orders
+    INSERT INTO orders
         (shopping_cart_id, payment_provider_id, total_amount)
     VALUES
         (current_shopping_cart_id, current_payment_provider_id, current_total_amount);
@@ -1250,13 +1253,32 @@ BEGIN
 
 
             INSERT INTO
-                transactions(order_id, amount, status)
+                transactions(order_id, amount)
             VALUES
                 (
                  current_order_id,
-                 needed_balance,
-                 'Completed'
+                 needed_balance
                 );
+
+                UPDATE
+                    shopping_cart
+                SET
+                    quantity = 0,
+                    jewelry_id = NULL,
+                    session_id = NULL
+                WHERE
+                    session_id = (
+                        SELECT
+                            s.id
+                        FROM
+                            sessions AS s
+                        JOIN
+                            customer_users AS cu
+                        ON
+                            s.customer_id = cu.id
+                        WHERE
+                            cu.id = provided_customer_id
+                        );
     END IF;
 END;
 $$
