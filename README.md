@@ -3,7 +3,7 @@
 ## Entity Relationship Diagram:
 ![Diagram](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/82eb2acf-a104-46b1-bbda-d8ca7573cffc)
 
-#### For the Demo purposes of this project we have created two departments - 'Merchandising' and 'Inventory'. We simulated having Super User and Regular Users, having specific roles at the departments they belong to. They authenticate themselves via username and password kept in the database.
+
 #### We have also simulated customer user registration. Customers credentials are also kept in the databsase. We have seperated their accounts into two tables - one for their login details - Email and Password, and another one for their personal information - that is obligatory for a putchase to be made so as to proceed with payment and delivery.
 #### Furthermore, we created process similiar to bank transfer verifying that a customer has enough balance to process a transaction with the total cost of their order.
 ### We have created process similiar to generating cookie tokens using JSON format
@@ -300,4 +300,53 @@ SELECT fn_register_user(
 
 ##### If email is already taken:
 <img width="833" alt="Screenshot 2023-10-19 at 19 17 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b37dedd0-0566-448d-adaa-215577e6efef">
+
+##### When registration is successfully completed (null values are allowed here, because the fields are obligatory upon order confirmation):
+<img width="1043" alt="Screenshot 2023-10-19 at 19 20 45" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/26f87f45-af7c-458e-b1b9-eda7b956ea53">
+<img width="1080" alt="Screenshot 2023-10-19 at 19 21 55" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c1c04b7d-a322-4d29-b6f1-46ad18efe379">
+<img width="1029" alt="Screenshot 2023-10-19 at 19 22 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9dc59408-8924-452a-a3c5-ad1a71b9dd1a">
+
+#### For the Demo purposes of this project we have created two departments - 'Merchandising' and 'Inventory'. We simulated having Super User and Regular Users, having specific roles at the departments they belong to. They authenticate themselves via username and password kept in the database:
+```plpgsql
+CREATE TABLE
+    staff_users(
+        id SERIAL PRIMARY KEY,
+        staff_user_role VARCHAR(50) NOT NULL,
+        staff_user_password VARCHAR(50) NOT NULL
+);
+
+INSERT INTO
+    staff_users(staff_user_role, staff_user_password)
+VALUES
+    ('super_staff_user', 'super_staff_user_password'),
+    ('merchandising_staff_user_first', 'merchandising_password_first'),
+    ('merchandising_staff_user_second', 'merchandising_password_second'),
+    ('inventory_staff_user_first', 'inventory_password_first'),
+    ('inventory_staff_user_second', 'inventory_password_second');
+
+CREATE TABLE
+    departments(
+        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 20001 INCREMENT 1 ) PRIMARY KEY,
+        name VARCHAR(30) NOT NULL
+);
+
+INSERT INTO
+    departments(name)
+VALUES
+    ('Supervisory');
+INSERT INTO
+    departments(name)
+VALUES
+    ('Merchandising');
+INSERT INTO
+    departments(name)
+VALUES
+    ('Inventory');
+```
+##### Users:
+<img width="657" alt="Screenshot 2023-10-19 at 19 37 38" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ec1a85a3-152a-417a-b370-66851b704ceb">
+
+##### Departments:
+<img width="220" alt="Screenshot 2023-10-19 at 19 38 19" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1e277c50-1d1f-433c-873a-3f2324bce56b">
+
 
