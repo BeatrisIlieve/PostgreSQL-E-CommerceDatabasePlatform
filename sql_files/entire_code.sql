@@ -1,8 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
-
-
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
     provided_error_message VARCHAR(300)
@@ -15,7 +13,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
 
 CREATE TABLE
     staff_users(
@@ -122,7 +119,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION
     fn_role_authentication(
     department_name VARCHAR(30),
@@ -158,7 +154,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
 CREATE TABLE
     types(
         id SERIAL PRIMARY KEY,
@@ -172,9 +167,6 @@ VALUES
     ('Earring'),
     ('Necklace'),
     ('Bracelet');
-
-
-
 
 CREATE TABLE
     jewelries(
@@ -287,7 +279,6 @@ CREATE TABLE
                      ON DELETE SET NULL
 );
 
-
 CREATE TABLE
     discounts(
         id SERIAL PRIMARY KEY,
@@ -301,13 +292,6 @@ CREATE TABLE
         CONSTRAINT ck_discounts_percentage
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
-
-
-
-
-
-
-
 
 CREATE TABLE
     shopping_cart(
@@ -684,11 +668,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
-
-
-
-
 
 
 
@@ -1300,6 +1279,52 @@ CALL sp_insert_jewelry_into_jewelries(
     'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
 );
 
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    4,
+    'CLASSIC DIAMOND TENNIS BRACELET',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351731/Rings/CLASSIC_DIAMOND_TENNIS_BRACELET_f1etis.webp',
+    7249.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
+);
+
+
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    2,
+    'ALMOST A HALO ROUND DIAMOND STUD EARRING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351117/Rings/ALMOST_A_HALO_ROUND_DIAMOND_STUD_EARRING_giloj0.webp',
+    3749.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This Almost A Halo Round Diamond Stud Earring is the perfect choice for any occasion. It features an 0.60cttw round diamonds set in a half halo design, creating a unique and timeless look. Crafted from the finest materials, this earring is sure to be an eye-catching addition to any collection.'
+);
+
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    3,
+    'DROP HALO PENDANT NECKLACE',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351447/Rings/DROP_HALO_PENDANT_NECKLACE_u811d4.webp',
+    17999.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This Drop Halo Pendant Necklace is a true statement piece. Crafted with a luxurious drop design, it combines stylish elegance with sophisticated charm. Its brilliant gold plating adds timeless sophistication and shine to any outfit. Refined and timeless, this necklace will ensure you stand out in any crowd.'
+);
+
 CALL sp_add_quantity_into_inventory('receiving_inventory_staff_user_first', 'receiving_inventory_password_first', '10004', NULL, 1, 100);
 
 CALL sp_insert_percent_into_discounts('merchandising_staff_user_first', 'merchandising_password_first', '10002', 1, 0.20);
@@ -1317,3 +1342,15 @@ CALL sp_remove_from_shopping_cart(1, 1, 1);
 CALL sp_complete_order(1, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
 
 CALL sp_login_user('b@icloud.com', 'S@3ana3a');
+
+
+
+
+
+
+
+
+
+
+
+
