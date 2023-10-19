@@ -294,3 +294,10 @@ SELECT fn_register_user(
 ```
 ##### If we try to enter a password which does not contain at least one special character and one digit:
 <img width="917" alt="Screenshot 2023-10-19 at 19 11 22" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a842a763-0c50-4e90-b17a-361103d73033">
+
+##### If passwords do not match:
+<img width="836" alt="Screenshot 2023-10-19 at 19 15 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fb43824a-de63-49a5-9aec-4357f1fda683">
+
+##### If email is already taken:
+<img width="833" alt="Screenshot 2023-10-19 at 19 17 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b37dedd0-0566-448d-adaa-215577e6efef">
+
