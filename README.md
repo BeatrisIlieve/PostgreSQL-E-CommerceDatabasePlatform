@@ -349,4 +349,51 @@ VALUES
 ##### Departments:
 <img width="220" alt="Screenshot 2023-10-19 at 19 38 19" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1e277c50-1d1f-433c-873a-3f2324bce56b">
 
+#### Next we have created 'employees' table and related the staff to the respective departments:
+```plpgsql
+CREATE TABLE
+    employees(
+        id INTEGER GENERATED ALWAYS AS IDENTITY ( START WITH 10001 INCREMENT 1 ) PRIMARY KEY,
+        staff_user_id INTEGER NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        department_id INTEGER NOT NULL,
+        first_name VARCHAR(30) NOT NULL,
+        last_name VARCHAR(30) NOT NULL,
+        email VARCHAR(30) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        employed_at DATE DEFAULT DATE(NOW()),
 
+        CONSTRAINT fk_employees_staff_users
+            FOREIGN KEY (staff_user_id)
+            REFERENCES staff_users(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
+
+        CONSTRAINT fk_employees_departments
+             FOREIGN KEY (department_id)
+             REFERENCES departments(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE
+);
+
+INSERT INTO
+    employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
+VALUES
+    (1, 20001, 'Beatris', 'Ilieve', 'beatris@icloud.com', '000-000-000');
+INSERT INTO
+    employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
+VALUES
+    (2, 20002, 'Terri', 'Aldersley', 'taldersley0@army.mil', '198-393-2278');
+INSERT INTO
+    employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
+VALUES
+    (3, 20002, 'Rose', 'Obrey', 'r@obrey.net', '631-969-8114');
+INSERT INTO
+    employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
+VALUES
+    (4, 20003,'Mariette', 'Caltera', 'mcaltera4@cpanel.net', '515-969-8114');
+INSERT INTO
+    employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
+VALUES
+    (5, 20003, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
+```
