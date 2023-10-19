@@ -198,7 +198,7 @@ CREATE TABLE
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
-        employee_id INTEGER NOT NULL,
+        employee_id INTEGER,
         jewelry_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL,
@@ -737,7 +737,7 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 
-SELECT trigger_fn_register_user('beatris@icloud.com', 'S@3ana3a', 'S@3ana3a');
+SELECT trigger_fn_register_user('b@icloud.com', 'S@3ana3a', 'S@3ana3a');
 
 
 
@@ -784,15 +784,10 @@ BEGIN
 
     IF
         is_email_valid IS FALSE
-    THEN
-        SELECT fn_raise_error_message(credentials_not_correct);
-    END IF;
-
-    IF
+            OR
         is_password_valid IS FALSE
     THEN
         SELECT fn_raise_error_message(credentials_not_correct);
-
     ELSE
         user_id := (
                 SELECT
@@ -812,6 +807,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
+CALL sp_login_user('b@icloud.com', 'S@3ana3a');
 
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
@@ -828,12 +824,122 @@ BEGIN
         'created_at', NOW()
     );
     current_expiration_time := NOW() + INTERVAL '1 HOUR';
-    INSERT INTO
-        sessions(customer_id, is_active, session_data, expiration_time)
-    VALUES
-        (current_customer_id, TRUE, current_session_data, current_expiration_time);
+    IF current_customer_id IN (
+        SELECT
+            customer_id
+        FROM
+            sessions
+        )
+    THEN
+        UPDATE
+            sessions
+        SET
+            session_data = current_session_data,
+            expiration_time = current_expiration_time
+        WHERE
+            customer_id = current_customer_id;
+    ELSE
+
+        INSERT INTO
+            sessions(customer_id, is_active, session_data, expiration_time)
+        VALUES
+            (current_customer_id, TRUE, current_session_data, current_expiration_time);
+    END IF;
 END;
 $$
 LANGUAGE plpgsql;
 
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_add_to_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
+    item_has_been_sold_out CONSTANT TEXT := 'This item has been sold out.';
+    old_expiration_time TIMESTAMP;
+BEGIN
+    old_expiration_time := (
+        SELECT
+            expiration_time
+        FROM
+            sessions
+        WHERE
+            id = provided_session_id
+        );
+    IF
+         NOW() >= old_expiration_time
+    THEN
+        SELECT
+            fn_raise_error_message(session_has_expired);
+    ELSIF (
+        SELECT
+            is_active
+        FROM
+            jewelries
+        WHERE
+            id= provided_jewelry_id
+        ) IS FALSE
+    THEN
+        SELECT fn_raise_error_message(item_has_been_sold_out);
+    ELSE
+        INSERT INTO
+            shopping_cart(session_id, jewelry_id, quantity)
+        VALUES
+            (provided_session_id, provided_jewelry_id, provided_quantity);
+
+        CALL sp_remove_quantity_from_inventory(provided_session_id, provided_jewelry_id, provided_quantity);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CALL sp_add_to_shopping_cart(29, 1, 1);
+
+CREATE OR REPLACE PROCEDURE
+    sp_remove_quantity_from_inventory(
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER
+)
+AS
+$$
+DECLARE
+    current_quantity INTEGER;
+    not_enough_quantity CONSTANT TEXT := ('There are only % left.', current_quantity);
+BEGIN
+    current_quantity := (
+        SELECT
+            quantity
+        FROM
+            inventory
+        WHERE
+            jewelry_id = in_jewelry_id
+        );
+    IF
+        current_quantity < requested_quantity
+    THEN
+        CALL fn_raise_error_message(not_enough_quantity);
+    ELSE
+        UPDATE
+            inventory
+        SET
+            quantity = quantity - requested_quantity,
+            deleted_at = DATE(NOW())
+        WHERE
+            jewelry_id = in_jewelry_id;
+    IF
+        current_quantity - requested_quantity = 0
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = FALSE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
 
