@@ -400,3 +400,84 @@ VALUES
 ##### Employees:
 <img width="1229" alt="Screenshot 2023-10-19 at 19 48 24" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/832a2aed-065e-4e46-9718-fca833a30c9a">
 
+#### Afterwards, we authenticate employees by their password, username and ID and we also check if the employee is ACTIVE (if he/she is still employeed at the store):
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    credentials_authentication(
+    provided_staff_user_role VARCHAR(30),
+    provided_staff_user_password VARCHAR(30),
+    provided_staff_user_id CHAR(5)
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    id_as_integer INTEGER;
+    is_authenticated BOOLEAN;
+BEGIN
+    id_as_integer := provided_staff_user_id::INTEGER;
+    IF
+        id_as_integer = (
+            SELECT
+                e.id
+            FROM
+                employees AS e
+            JOIN
+                staff_users
+            ON
+                e.staff_user_id = staff_users.id
+            WHERE
+                 staff_user_role = provided_staff_user_role
+                        AND
+                 staff_user_password = provided_staff_user_password
+                        AND
+                is_active IS TRUE
+            )
+    THEN
+        is_authenticated := TRUE;
+    ELSE
+        is_authenticated := FALSE;
+    END IF;
+RETURN
+    is_authenticated;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### Next step is to verify if the provided employee ID corresponds to the respective authorised department:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_role_authentication(
+    department_name VARCHAR(30),
+    provided_emp_id CHAR(5)
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    actual_department_name VARCHAR(40);
+    is_role_authorised BOOLEAN;
+BEGIN
+    actual_department_name :=
+        (SELECT
+            u.staff_user_role
+        FROM
+            staff_users AS u
+        JOIN
+            employees AS e
+        ON
+            u.id = e.staff_user_id
+        WHERE
+            e.id = provided_emp_id::INTEGER);
+    IF
+        actual_department_name LIKE department_name || '%'
+    THEN
+        is_role_authorised := TRUE;
+    ELSE
+        is_role_authorised := FALSE;
+    END IF;
+    RETURN is_role_authorised;
+END;
+$$
+LANGUAGE plpgsql;
+```
