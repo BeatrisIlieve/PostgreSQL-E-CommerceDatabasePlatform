@@ -599,6 +599,7 @@ CREATE TABLE
         deleted_at DATE
 );
 
+
 CREATE TABLE
     customer_details(
         id SERIAL PRIMARY KEY,
@@ -607,6 +608,7 @@ CREATE TABLE
         last_name VARCHAR(30),
         phone_number VARCHAR(20),
         current_balance DECIMAL(8, 2),
+        payment_provider VARCHAR(100) NOT NULL,
 
         CONSTRAINT fk_customers_details_customer_users
                      FOREIGN KEY (customer_user_id)
@@ -748,7 +750,7 @@ AS
 $$
 BEGIN
     INSERT INTO
-        customer_details(customer_user_id, first_name, last_name, phone_number)
+        customer_details(customer_user_id, first_name, last_name, phone_number, current_balance, payment_provider)
     VALUES
         (NEW.id, NULL, NULL, NULL);
     RETURN NEW;
@@ -1042,6 +1044,170 @@ BEGIN
             is_active = TRUE
         WHERE
             id = in_jewelry_id;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_complete_order(
+    provided_session_id INTEGER,
+    provided_first_name VARCHAR(30),
+    provided_last_name VARCHAR(30),
+    provided_phone_number VARCHAR(20),
+    provided_current_balance DECIMAL(8, 2),
+    provided_payment_provider VARCHAR(100)
+)
+AS
+$$
+DECLARE
+    provider_not_supported CONSTANT TEXT := 'Payment provider not available. Please choose "PayPal", "Amazon Pay" or "Stripe" and try again.' ;
+    current_total_amount DECIMAL(8, 2);
+    provided_customer_id INTEGER;
+    current_shopping_cart_id INTEGER;
+BEGIN
+    IF
+        provided_payment_provider NOT IN (
+        SELECT
+            name
+        FROM
+            payment_providers
+        )
+    THEN
+        CALL fn_raise_error_message(provider_not_supported);
+    END IF;
+
+    provided_customer_id := (
+            SELECT
+                cd.id
+            FROM
+                customer_details AS cd
+            JOIN
+                customer_users AS cu
+            ON
+                cd.customer_user_id = cu.id
+            JOIN
+                sessions AS s
+            ON
+                cu.id = s.customer_id
+            WHERE
+                s.id = provided_session_id
+            );
+
+    UPDATE
+        customer_details
+    SET
+        first_name = provided_first_name,
+        last_name = provided_last_name,
+        phone_number = provided_phone_number,
+        current_balance = provided_current_balance
+    WHERE
+        id = provided_customer_id;
+
+    current_shopping_cart_id := (
+        SELECT
+            sc.id
+        FROM
+            shopping_cart AS sc
+        JOIN
+            sessions AS s
+        ON
+            sc.session_id = s.id
+        WHERE
+            s.customer_id = provided_customer_id
+            );
+
+    current_total_amount := (
+        SELECT
+            SUM(CASE
+                WHEN j.discount_price IS NULL THEN j.regular_price
+                ELSE j.discount_price
+            END) AS final_price
+        FROM
+            jewelries AS j
+        JOIN
+            shopping_cart AS sc
+        ON
+            j.id = sc.jewelry_id
+        JOIN
+            sessions AS s
+        ON
+            sc.session_id = s.id
+        WHERE
+            s.id = provided_session_id
+    );
+
+        INSERT INTO orders
+        (shopping_cart_id, payment_provider_id, total_amount)
+    VALUES
+        (current_shopping_cart_id, provided_payment_provider, current_total_amount);
+
+    CALL sp_transfer_money(provided_customer_id, provided_current_balance, current_total_amount);
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CALL sp_complete_order(29, 'Beatris', 'Ilieve', '000000000', 100000.00, 'PayPal');
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_transfer_money(
+        provided_customer_id INTEGER,
+        available_balance DECIMAL(8, 2),
+        needed_balance DECIMAL(8, 2)
+)
+AS
+$$
+DECLARE
+    insufficient_balance CONSTANT TEXT := ('Insufficient balance to complete the transaction. Needed amount: %', needed_balance);
+    current_order_id INTEGER;
+BEGIN
+    IF
+        (available_balance - needed_balance) < 0
+    THEN
+        SELECT fn_raise_error_message(insufficient_balance);
+    ELSE
+        UPDATE
+            customer_details
+        SET
+            current_balance = current_balance - needed_balance
+        WHERE
+            id = provided_customer_id;
+
+        current_order_id :=(
+            SELECT
+                o.id
+            FROM
+                orders AS o
+            JOIN
+                shopping_cart AS sc
+            ON
+                o.shopping_cart_id = sc.id
+            JOIN
+                sessions AS s
+            ON
+                sc.session_id = s.id
+            JOIN
+                customer_users AS cu
+            ON
+                s.customer_id = cu.id
+            WHERE
+                cu.id = provided_customer_id
+            );
+
+
+        INSERT INTO
+            transactions(order_id, amount, status)
+        VALUES
+            (
+             current_order_id,
+             needed_balance,
+             'Completed'
+            );
     END IF;
 END;
 $$
