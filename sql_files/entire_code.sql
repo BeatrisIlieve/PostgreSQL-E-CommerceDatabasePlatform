@@ -587,10 +587,9 @@ CREATE TABLE
                      ON DELETE CASCADE
 );
 
-
 CREATE TABLE sessions(
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL,
+    customer_id INTEGER,
     is_active BOOLEAN,
     session_data JSONB NOT NULL,
     expiration_time TIMESTAMPTZ NOT NULL,
@@ -701,11 +700,14 @@ BEGIN
         SELECT
             fn_raise_error_message(passwords_do_not_match);
     ELSE
-        hashed_password := crypt(provided_password, gen_salt('bf'));
+        hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
 
         INSERT INTO
             customer_users(email, password, created_at, updated_at, deleted_at)
         VALUES ( provided_email, hashed_password , DATE(NOW()), NULL, NULL);
+
+        CALL sp_login_user(provided_email, provided_password);
+
     END IF;
 END;
 $$
@@ -726,16 +728,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-SELECT trigger_fn_register_user('b@icloud.com', 'S@3ana3a', 'S@3ana3a');
-
-
-
-
-
-
-
-
-
 
 CREATE OR REPLACE TRIGGER
     tr_insert_id_into_customer_details
@@ -745,30 +737,64 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 
+SELECT trigger_fn_register_user('beatris@icloud.com', 'S@3ana3a', 'S@3ana3a');
 
-CREATE OR REPLACE FUNCTION
-    fn_login_user(
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_login_user(
     provided_email VARCHAR(30),
     provided_password VARCHAR(15)
 )
-RETURNS BOOLEAN
 AS
 $$
 DECLARE
     credentials_not_correct CONSTANT TEXT := 'The email or password you entered is incorrect. Please check your email and password, and try again.';
-    is_authenticated BOOLEAN;
+    is_email_valid BOOLEAN;
+    is_password_valid BOOLEAN;
+    hashed_password VARCHAR(100);
+    user_id INTEGER;
 BEGIN
-    IF NOT provided_email AND provided_password IN (
+    IF provided_email IN (
         SELECT
-            email,
-            password
+            cu.email
         FROM
-            customer_users
+            customer_users AS cu
         )
     THEN
-        SELECT fn_raise_error_message(credentials_not_correct);
+        is_email_valid := TRUE;
     ELSE
-        CALL sp_generate_session_token((
+        is_email_valid := FALSE;
+    END IF;
+
+    hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
+
+    IF hashed_password IN (
+        SELECT
+            cu.password
+        FROM
+            customer_users AS cu
+        )
+        THEN
+            is_password_valid := TRUE;
+    ELSE
+        is_password_valid := FALSE;
+    END IF;
+
+    IF
+        is_email_valid IS FALSE
+    THEN
+        SELECT fn_raise_error_message(credentials_not_correct);
+    END IF;
+
+    IF
+        is_password_valid IS FALSE
+    THEN
+        SELECT fn_raise_error_message(credentials_not_correct);
+
+    ELSE
+        user_id := (
                 SELECT
                     id
                 FROM
@@ -776,429 +802,38 @@ BEGIN
                 WHERE
                     email = provided_email
                             AND
-                    password = provided_password
-                           )
-                   );
+                    password = hashed_password
+                );
+        CALL sp_generate_session_token(
+                user_id
+        );
     END IF;
-RETURN is_authenticated;
 END;
 $$
 LANGUAGE plpgsql;
-
 
 
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
-    provided_customer_id INTEGER
+    current_customer_id INTEGER
 )
 AS
 $$
 DECLARE
-    session_data JSONB;
-    expiration_time TIMESTAMPTZ;
+    current_session_data JSONB;
+    current_expiration_time TIMESTAMPTZ;
 BEGIN
-    session_data := jsonb_build_object(
-        'customer_id', provided_customer_id,
+    current_session_data := jsonb_build_object(
+        'customer_id', current_customer_id,
         'created_at', NOW()
     );
-    expiration_time := NOW() + INTERVAL '1 HOUR';
+    current_expiration_time := NOW() + INTERVAL '1 HOUR';
     INSERT INTO
-        sessions(customer_id, session_data, expiration_time)
+        sessions(customer_id, is_active, session_data, expiration_time)
     VALUES
-        (customer_id, session_data, expiration_time);
-    UPDATE
-        sessions
-    SET
-        is_active = TRUE
-    WHERE
-        customer_id = provided_customer_id;
+        (current_customer_id, TRUE, current_session_data, current_expiration_time);
 END;
 $$
 LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION
-    sp_remove_from_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
-AS
-$$
-DECLARE
-    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
-BEGIN
-    IF NOT (
-        SELECT
-            expiration_time
-        FROM
-            sessions
-        ) < NOW()
-    THEN
-        SELECT
-            fn_raise_error_message(session_has_expired);
-    ELSE
-        CALL sp_return_back_quantity_to_inventory(provided_session_id, provided_jewelry_id, provided_quantity);
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_add_to_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
-AS
-$$
-DECLARE
-    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
-    item_has_been_sold_out CONSTANT TEXT := 'This item has been sold out.';
-BEGIN
-    IF NOT (
-        SELECT
-            expiration_time
-        FROM
-            sessions
-        ) < NOW()
-    THEN
-        SELECT
-            fn_raise_error_message(session_has_expired);
-    ELSIF (
-        SELECT
-            is_active
-        FROM
-            jewelries
-        WHERE
-            id= provided_jewelry_id
-        ) IS FALSE
-    THEN
-        SELECT fn_raise_error_message(item_has_been_sold_out);
-    ELSE
-        CALL sp_remove_quantity_from_inventory(provided_session_id, provided_jewelry_id, provided_quantity)
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_return_back_quantity_to_inventory(
-        in_session_id INTEGER,
-        in_jewelry_id INTEGER,
-        requested_quantity INTEGER
-)
-AS
-$$
-BEGIN
-    UPDATE
-        inventory
-    SET
-        employee_or_session_id = in_session_id,
-        quantity = quantity + requested_quantity,
-        deleted_at = DATE(NOW())
-    WHERE
-        jewelry_id = in_jewelry_id;
-    IF(
-        SELECT
-            is_active
-        FROM
-            jewelries
-        WHERE
-            id = in_jewelry_id
-        ) IS FALSE
-    THEN
-        UPDATE
-            jewelries
-        SET
-            is_active = TRUE
-        WHERE
-            id = in_jewelry_id;
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_remove_quantity_from_inventory(
-        in_session_id INTEGER,
-        in_jewelry_id INTEGER,
-        requested_quantity INTEGER
-)
-AS
-$$
-DECLARE
-    current_quantity INTEGER;
-    not_enough_quantity CONSTANT TEXT := ('There are only % left.', current_quantity);
-BEGIN
-    current_quantity := (
-        SELECT
-            quantity
-        FROM
-            inventory
-        WHERE
-            jewelry_id = in_jewelry_id
-        );
-    IF
-        current_quantity < requested_quantity
-    THEN
-        CALL fn_raise_error_message(not_enough_quantity);
-    ELSE
-        UPDATE
-            inventory
-        SET
-            employee_or_session_id = in_session_id,
-            quantity = quantity - requested_quantity,
-            deleted_at = DATE(NOW())
-        WHERE
-            jewelry_id = in_jewelry_id;
-    IF
-        current_quantity - requested_quantity = 0
-    THEN
-        UPDATE
-            jewelries
-        SET
-            is_active = FALSE
-        WHERE
-            id = in_jewelry_id;
-    END IF;
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_transfer_money(
-        customer_id INTEGER,
-        available_balance DECIMAL(8, 2),
-        needed_balance DECIMAL(8, 2)
-)
-AS
-$$
-DECLARE
-    insufficient_balance CONSTANT TEXT := ('Insufficient balance to complete the transaction. Needed amount: %', needed_balance);
-BEGIN
-    IF
-        (available_balance - needed_balance) < 0
-    THEN
-        CALL fn_raise_error_message(insufficient_balance);
-    ELSE
-        UPDATE
-            customer_details
-        SET
-            current_balance = current_balance - needed_balance
-        WHERE
-            id = customer_id;
-
-        INSERT INTO
-            transactions
-        VALUES
-            (
-             amount = needed_balance,
-             status = 'Completed'
-            );
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-
-
-
-
-
-
-
-
-
-CREATE OR REPLACE PROCEDURE
-    sp_complete_order(
-    provided_session_id INTEGER,
-    provided_first_name VARCHAR(30),
-    provided_last_name VARCHAR(30),
-    provided_phone_number VARCHAR(20),
-    provided_current_balance DECIMAL(8, 2)
-)
-AS
-$$
-DECLARE
-    total_amount DECIMAL(8, 2);
-    provided_customer_id INTEGER;
-    final_price DECIMAL (8, 2);
-    order_id INTEGER;
-BEGIN
-    provided_customer_id := (
-            SELECT
-                cd.id
-            FROM
-                customer_details AS cd
-            JOIN
-                customer_users AS cu
-            ON
-                cd.customer_user_id = cu.id
-            JOIN
-                sessions AS s
-            ON
-                cu.id = s.customer_id
-            WHERE
-                s.id = provided_session_id
-            );
-
-    UPDATE
-        customer_details
-    SET
-        first_name = provided_first_name,
-        last_name = provided_last_name,
-        phone_number = provided_phone_number,
-        current_balance = provided_current_balance
-    WHERE
-        id = provided_customer_id;
-
-    total_amount := (
-        SELECT
-            SUM(CASE
-                WHEN j.discount_price IS NULL THEN j.regular_price
-                ELSE j.discount_price
-            END) AS final_price
-        FROM
-            jewelries AS j
-        JOIN
-            shopping_cart AS sc
-        ON
-            j.id = sc.jewelry_id
-        JOIN
-            sessions AS s
-        ON
-            sc.session_id = s.id
-        WHERE
-            s.id = provided_session_id
-    );
-    CALL sp_transfer_money(provided_customer_id, provided_current_balance, total_amount);
-END;
-$$
-LANGUAGE plpgsql;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- CREATE OR REPLACE PROCEDURE
---     sp_remove_quantity_from_inventory(
---         provided_staff_user_role VARCHAR(30),
---         provided_staff_user_password VARCHAR(9),
---         provided_last_modified_by_emp_id CHAR(5),
---         provided_jewelry_id INTEGER,
---         requested_quantity INTEGER
--- )
--- AS
--- $$
--- DECLARE
---     current_quantity INTEGER;
--- BEGIN
---     IF NOT
---         (SELECT fn_role_authentication(
---                     'issuing_inventory', provided_last_modified_by_emp_id
---                     ))
---     THEN
---         RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
---     END IF;
---         IF
---         (SELECT credentials_authentication(
---             provided_staff_user_role,
---             provided_staff_user_password,
---             provided_last_modified_by_emp_id)) IS TRUE
---     THEN
---         current_quantity := (
---             SELECT
---                 quantity
---             FROM
---                 inventory
---             WHERE
---                 jewelry_id = provided_jewelry_id
---             );
---         CASE
---             WHEN current_quantity >= requested_quantity THEN
---                 UPDATE
---                     inventory
---                 SET
---                     last_modified_by_emp_id = provided_last_modified_by_emp_id::INTEGER,
---                     quantity = quantity - requested_quantity,
---                     deleted_at = DATE(NOW())
---                 WHERE
---                     jewelry_id = provided_jewelry_id;
---             IF current_quantity - requested_quantity = 0 THEN
---                     UPDATE
---                         jewelries
---                     SET
---                         is_active = FALSE
---                     WHERE
---                         id = provided_jewelry_id;
---             END IF;
---         ELSE
---             RAISE NOTICE 'Not enough quantity. AVAILABLE ONLY: %', current_quantity;
---         END CASE;
---     ELSE
---         RAISE EXCEPTION 'Authorization failed: Incorrect password';
---     END IF;
--- END;
--- $$
--- LANGUAGE plpgsql;
-
-
-
-
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_is_item_sold_out(
-        staff_user_role VARCHAR(50),
-        staff_user_password VARCHAR(50),
-        provided_super_staff_user_id CHAR(5),
-        is_item_sold_out BOOLEAN
-)
-RETURNS TABLE(
-    type_id INTEGER,
-    name VARCHAR(100),
-    regular_price DECIMAL(7, 2)
-)
-AS
-$$
-BEGIN
-    IF NOT
-        (SELECT fn_role_authentication(
-                    'super', provided_super_staff_user_id
-                    ))
-    THEN
-        RAISE EXCEPTION 'Access Denied: You do not have the required authorization to perform actions into this department.';
-    END IF;
-
-    RETURN QUERY
-    SELECT
-        j.type_id,
-        j.name,
-        j.regular_price
-    FROM
-        jewelries AS j
-    WHERE
-        j.is_active = is_item_sold_out;
-END;
-$$
-LANGUAGE plpgsql;
-
-SELECT trigger_fn_is_item_sold_out('super_staff_user', 'super_staff_user_password', '10001')
-
-
 
 
