@@ -222,16 +222,33 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+### Session token is saved in 'sessions' table:
+```plpgsql
+CREATE TABLE sessions(
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    is_active BOOLEAN,
+    session_data JSONB NOT NULL,
+    expiration_time TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT fk_sessions_customer_users
+                     FOREIGN KEY (customer_id)
+                     REFERENCES customer_users
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
+```
 #### The token expires one hour after the trigger register, respectively login function has been selected:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
-    current_customer_id INTEGER
+        current_customer_id INTEGER
 )
 AS
 $$
 DECLARE
     current_session_data JSONB;
+
     current_expiration_time TIMESTAMPTZ;
 BEGIN
     current_session_data := jsonb_build_object(
@@ -266,7 +283,9 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
+```
+#### The following trigger is doing the magic so we can see the result below:
+```plpgsql
 SELECT trigger_fn_register_user(
     'beatris@icloud.com',
     '#6hhhhh',
