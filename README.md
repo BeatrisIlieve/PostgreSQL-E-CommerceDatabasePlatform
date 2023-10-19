@@ -521,3 +521,63 @@ CREATE TABLE
 ```
 <img width="174" alt="Screenshot 2023-10-19 at 20 13 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b042a250-eb0b-464e-b811-7ec1751b073a">
 
+#### The 'inventory' table serves to keep information about either ID of an employee who modified the state of a specific jewelry or a shopping session ID, and certainly it stores information about the available quantities:
+```plpgsql
+CREATE TABLE
+    inventory(
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER,
+        session_id INTEGER,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT fk_inventory_employees
+             FOREIGN KEY (employee_id)
+             REFERENCES employees(id)
+             ON UPDATE CASCADE
+             ON DELETE SET NULL,
+
+        CONSTRAINT fk_inventory_jewelries
+                FOREIGN KEY (jewelry_id)
+                REFERENCES jewelries(id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
+);
+```
+#### Furthermore, 'inventory_records' table shows all events that occured on inventory with their corresponding acctions - create, update, delete and their dates:
+```plpgsql
+CREATE TABLE
+    inventory_records(
+        id SERIAL PRIMARY KEY,
+        inventory_id INTEGER NOT NULL,
+        operation VARCHAR(6) NOT NULL,
+        date TIMESTAMPTZ DEFAULT DATE(NOW()),
+
+        CONSTRAINT fk_inventory_records_inventory
+                     FOREIGN KEY (inventory_id)
+                     REFERENCES inventory(id)
+                     ON UPDATE CASCADE
+                     ON DELETE SET NULL
+);
+```
+#### Similiarly to 'inventory' the 'discounts' table shows the percentage, the jewelry ID and the ID of the employee who inserted it:
+```plpgsql
+CREATE TABLE
+    discounts(
+        id SERIAL PRIMARY KEY,
+        last_modified_by_emp_id CHAR(5) NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        percentage DECIMAL(3,2) NOT NULL,
+        created_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT ck_discounts_percentage
+             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
+);
+```
+
+
