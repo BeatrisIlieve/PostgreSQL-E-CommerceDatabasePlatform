@@ -195,27 +195,35 @@ CREATE TABLE
              ON DELETE CASCADE
 );
 
+
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
         employee_id INTEGER,
+        session_id INTEGER,
         jewelry_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
 
-        CONSTRAINT fk_inventory_jewelries
-                FOREIGN KEY (jewelry_id)
-                REFERENCES jewelries(id)
-                ON UPDATE CASCADE
-                ON DELETE CASCADE,
-
         CONSTRAINT fk_inventory_employees
              FOREIGN KEY (employee_id)
              REFERENCES employees(id)
              ON UPDATE CASCADE
-             ON DELETE SET NULL
+             ON DELETE SET NULL,
+
+        CONSTRAINT fk_inventory_sessions
+            FOREIGN KEY (session_id)
+            REFERENCES sessions(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
+
+        CONSTRAINT fk_inventory_jewelries
+                FOREIGN KEY (jewelry_id)
+                REFERENCES jewelries(id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
 );
 
 CREATE TABLE
@@ -322,6 +330,7 @@ CREATE OR REPLACE PROCEDURE
         provided_staff_user_role VARCHAR(30),
         provided_staff_user_password VARCHAR(9),
         provided_employee_id CHAR(5),
+        provided_session_id INTEGER,
         provided_jewelry_id INTEGER,
         added_quantity INTEGER
 )
@@ -331,23 +340,13 @@ DECLARE
     access_denied CONSTANT TEXT := 'Access Denied: You do not have the required authorization to perform actions into this department.';
     authorisation_failed CONSTANT TEXT := 'Authorization failed: Incorrect password';
 BEGIN
-    IF NOT
-        (SELECT fn_role_authentication(
-                    'receiving_inventory', provided_employee_id
-                    ))
-    THEN
-        SELECT fn_raise_error_message(access_denied);
-    END IF;
     IF
-        (SELECT credentials_authentication(
-            provided_staff_user_role,
-            provided_staff_user_password,
-            provided_employee_id)) IS TRUE
+        provided_session_id IS NOT NULL
     THEN
         UPDATE
             inventory
         SET
-            employee_id = provided_employee_id::INTEGER,
+            session_id = provided_session_id,
             quantity = quantity + added_quantity,
             updated_at = DATE(NOW())
         WHERE
@@ -359,7 +358,36 @@ BEGIN
         WHERE
             id = provided_jewelry_id;
     ELSE
-        SELECT fn_raise_error_message(authorisation_failed);
+        IF NOT
+            (SELECT fn_role_authentication(
+                        'receiving_inventory', provided_employee_id
+                        ))
+        THEN
+            SELECT fn_raise_error_message(access_denied);
+        END IF;
+        IF
+            (SELECT credentials_authentication(
+                provided_staff_user_role,
+                provided_staff_user_password,
+                provided_employee_id)) IS TRUE
+        THEN
+            UPDATE
+                inventory
+            SET
+                employee_id = provided_employee_id::INTEGER,
+                quantity = quantity + added_quantity,
+                updated_at = DATE(NOW())
+            WHERE
+                jewelry_id = provided_jewelry_id;
+            UPDATE
+                jewelries
+            SET
+                is_active = TRUE
+            WHERE
+                id = provided_jewelry_id;
+        ELSE
+            SELECT fn_raise_error_message(authorisation_failed);
+        END IF;
     END IF;
 END;
 $$
@@ -897,6 +925,10 @@ LANGUAGE plpgsql;
 
 CALL sp_add_to_shopping_cart(29, 1, 1);
 
+
+
+
+
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory(
         in_jewelry_id INTEGER,
@@ -943,3 +975,74 @@ END;
 $$
 LANGUAGE plpgsql;
 
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_remove_from_shopping_cart(provided_session_id INTEGER, provided_jewelry_id INTEGER, provided_quantity INTEGER)
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT := 'Your shopping session has expired. To continue shopping, please log in again.';
+    old_expiration_time TIMESTAMP;
+BEGIN
+    old_expiration_time := (
+            SELECT
+                expiration_time
+            FROM
+                sessions
+            WHERE
+                id = provided_session_id
+            );
+    IF
+         NOW() >= old_expiration_time
+    THEN
+        SELECT
+            fn_raise_error_message(session_has_expired);
+    ELSE
+        CALL sp_return_back_quantity_to_inventory(provided_session_id, provided_jewelry_id, provided_quantity);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CALL sp_remove_from_shopping_cart(29, 1, 1);
+
+
+
+CREATE OR REPLACE PROCEDURE
+    sp_return_back_quantity_to_inventory(
+        in_session_id INTEGER,
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER
+)
+AS
+$$
+BEGIN
+    UPDATE
+        inventory
+    SET
+        session_id = in_session_id,
+        quantity = quantity + requested_quantity,
+        deleted_at = DATE(NOW())
+    WHERE
+        jewelry_id = in_jewelry_id;
+    IF(
+        SELECT
+            is_active
+        FROM
+            jewelries
+        WHERE
+            id = in_jewelry_id
+        ) IS FALSE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = TRUE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
