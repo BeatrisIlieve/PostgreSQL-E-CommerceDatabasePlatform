@@ -3,8 +3,9 @@
 ## Entity Relationship Diagram:
 ![Diagram](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/82eb2acf-a104-46b1-bbda-d8ca7573cffc)
 
+### <p align="center"> The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code. 
+### The provided input data is intended solely for demonstration and testing purposes, facilitating the evaluation and verification of the code's functionality. </p>
 
-#### We have also simulated customer user registration. Customers credentials are also kept in the databsase. We have seperated their accounts into two tables - one for their login details - Email and Password, and another one for their personal information - that is obligatory for a putchase to be made so as to proceed with payment and delivery.
 #### Furthermore, we created process similiar to bank transfer verifying that a customer has enough balance to process a transaction with the total cost of their order.
 ### We have created process similiar to generating cookie tokens using JSON format
 
@@ -12,7 +13,7 @@
 ```plpgsql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ```
-#### Customer accounts are seperated into two tables connected through Foreign Key - one for their login details - <ins>Email and Password</ins>:
+#### Customer accounts are seperated into two tables related through" Foreign Key - one for their login details - <ins>Email and Password</ins>:
 ```plpgsql
 CREATE TABLE
     customer_users(
@@ -222,7 +223,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-### Session token is saved in 'sessions' table:
+#### Session token is saved in 'sessions' table:
 ```plpgsql
 CREATE TABLE sessions(
     id SERIAL PRIMARY KEY,
@@ -238,7 +239,7 @@ CREATE TABLE sessions(
                      ON DELETE CASCADE
 );
 ```
-#### The token expires one hour after the trigger register, respectively login function has been selected:
+#### The token expires one hour after the trigger register, respectively login function, has been selected:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_generate_session_token(
@@ -481,7 +482,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the jewelries table stays empty for now since later on the devoted employees would insert jeelries by their own):
+#### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the 'jewelries' table stays empty for now since later on the devoted employees would insert the items by their own):
 ```plpgsql
 CREATE TABLE
     types(
