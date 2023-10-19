@@ -57,7 +57,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-#### 
 ```
 #### We have simulated user registration process that inludes providing <ins>Unique</ins> email as a username and a <ins>Secure Confirmed Password</ins> inserted into into the 'customer_users' table:
 ```plpgsql
@@ -117,7 +116,6 @@ BEGIN
             (provided_email, hashed_password , DATE(NOW()), NULL, NULL);
 
         CALL sp_login_user(provided_email, provided_password);
-
     END IF;
 END;
 $$
@@ -149,7 +147,129 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 ```
+#### The next Procedure takes care of <ins>Automatically logging-in</ins> customers who have just completed the registration process. It also calls Procedure that simulates generating <ins>Cookie Tokens using JSON format</ins>:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_login_user(
+    provided_email VARCHAR(30),
+    provided_password VARCHAR(15)
+)
+AS
+$$
+DECLARE
+    credentials_not_correct CONSTANT TEXT :=
+        'The email or password you entered is incorrect. ' ||
+        'Please check your email and password, and try again.';
 
+    is_email_valid BOOLEAN;
 
+    is_password_valid BOOLEAN;
 
-#### After registration process is finished, customers are <ins>Automatically logged-in</ins> via Tigger that executes login-function on Insert into the 
+    hashed_password VARCHAR(100);
+
+    user_id INTEGER;
+BEGIN
+    IF provided_email IN (
+        SELECT
+            cu.email
+        FROM
+            customer_users AS cu
+        )
+    THEN
+        is_email_valid := TRUE;
+    ELSE
+        is_email_valid := FALSE;
+    END IF;
+
+    hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
+
+    IF hashed_password IN (
+        SELECT
+            cu.password
+        FROM
+            customer_users AS cu
+        )
+        THEN
+            is_password_valid := TRUE;
+
+    ELSE
+        is_password_valid := FALSE;
+    END IF;
+
+    IF
+        is_email_valid IS FALSE
+            OR
+        is_password_valid IS FALSE
+    THEN
+        SELECT fn_raise_error_message(credentials_not_correct);
+
+    ELSE
+        user_id := (
+                SELECT
+                    id
+                FROM
+                    customer_users
+                WHERE
+                    email = provided_email
+                            AND
+                    password = hashed_password
+                );
+        CALL sp_generate_session_token(
+                user_id
+        );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### The token expires one hour after the trigger register, respectively login function has been selected:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_generate_session_token(
+    current_customer_id INTEGER
+)
+AS
+$$
+DECLARE
+    current_session_data JSONB;
+    current_expiration_time TIMESTAMPTZ;
+BEGIN
+    current_session_data := jsonb_build_object(
+        'customer_id', current_customer_id,
+        'created_at', NOW()
+    );
+
+    current_expiration_time := NOW() + INTERVAL '1 HOUR';
+
+    IF current_customer_id IN (
+        SELECT
+            customer_id
+        FROM
+            sessions
+        )
+    THEN
+        UPDATE
+            sessions
+        SET
+            session_data = current_session_data,
+            expiration_time = current_expiration_time
+        WHERE
+            customer_id = current_customer_id;
+
+    ELSE
+        INSERT INTO
+            sessions(customer_id, is_active, session_data, expiration_time)
+        VALUES
+            (current_customer_id, TRUE, current_session_data, current_expiration_time);
+
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+SELECT trigger_fn_register_user(
+    'beatris@icloud.com',
+    '#6hhhhh',
+    '#6hhhhh'
+);
+```
