@@ -793,7 +793,7 @@ BEGIN
         SET
             session_id = provided_session_id,
             quantity = quantity + added_quantity,
-            updated_at = DATE(NOW())
+            updated_at = NOW()
         WHERE
             jewelry_id = provided_jewelry_id;
         UPDATE
@@ -805,7 +805,7 @@ BEGIN
     ELSE
         IF NOT(
             SELECT fn_role_authentication(
-                        'receiving_inventory', provided_employee_id
+                        'inventory', provided_employee_id
                         )
             )
         THEN
@@ -823,7 +823,7 @@ BEGIN
             SET
                 employee_id = provided_employee_id::INTEGER,
                 quantity = quantity + added_quantity,
-                updated_at = DATE(NOW())
+                updated_at = NOW()
             WHERE
                 jewelry_id = provided_jewelry_id;
             UPDATE
@@ -840,4 +840,43 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+##### The trigger function below serves to automatically add records when an insert operation occurs on the 'inventory' table:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    trigger_fn_insert_new_entity_into_inventory_records_on_create()
+RETURNS TRIGGER
+AS
+$$
+DECLARE
+    operation_type VARCHAR(6);
+BEGIN
+    operation_type := 'Create';
+    INSERT INTO
+            inventory_records(inventory_id, operation, date)
+    VALUES
+        (NEW.id, operation_type, NOW());
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
 
+CREATE OR REPLACE TRIGGER
+    tr_insert_new_entity_into_inventory_records_on_create
+AFTER INSERT ON
+    inventory
+FOR EACH ROW
+EXECUTE FUNCTION 
+    trigger_fn_insert_new_entity_into_inventory_records_on_create();
+```
+#### We call the function:
+```plpgsql
+CALL sp_add_quantity_into_inventory(
+    'inventory_staff_user_first',
+    'inventory_password_first',
+    '10004',
+    NULL,
+    1,
+    10);
+```
+##### 'inventory_records' table:
+<img width="744" alt="Screenshot 2023-10-20 at 15 19 40" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/03278b21-39c8-41c7-974d-9a79fb6b8fd7">
