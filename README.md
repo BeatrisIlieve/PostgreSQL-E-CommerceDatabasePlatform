@@ -520,6 +520,8 @@ CREATE TABLE
              ON DELETE CASCADE
 );
 ```
+##### 'types' table:
+
 <img width="174" alt="Screenshot 2023-10-19 at 20 13 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b042a250-eb0b-464e-b811-7ec1751b073a">
 
 #### The 'inventory' table serves to keep information about either ID of an employee who modified the state of a specific jewelry or a shopping session ID, and certainly it stores information about the available quantities:
