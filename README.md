@@ -1177,7 +1177,7 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
-#### The procedure 'sp_add_to_shopping_cart' performs a few checks:
+#### The procedure 'sp_add_to_shopping_cart' performs a few tasks:
 1. If the shopping session has expired;
 2. If there is any available quantity if the given item;
 3. If there is enough available quantity;
@@ -1294,5 +1294,5 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-<img width="601" alt="Screenshot 2023-10-20 at 18 10 18" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ba0089ab-a7e6-47cd-9258-0555f72849ca">
+1. <img width="601" alt="Screenshot 2023-10-20 at 18 10 18" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ba0089ab-a7e6-47cd-9258-0555f72849ca">
 
