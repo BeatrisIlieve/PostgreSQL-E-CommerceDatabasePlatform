@@ -303,8 +303,14 @@ SELECT fn_register_user(
 <img width="833" alt="Screenshot 2023-10-19 at 19 17 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b37dedd0-0566-448d-adaa-215577e6efef">
 
 ##### When registration is successfully completed (null values are allowed here, because the fields are obligatory upon order confirmation):
+
+##### 'customer_users' table:
 <img width="1043" alt="Screenshot 2023-10-19 at 19 20 45" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/26f87f45-af7c-458e-b1b9-eda7b956ea53">
+
+##### 'customer_details' table:
 <img width="1080" alt="Screenshot 2023-10-19 at 19 21 55" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c1c04b7d-a322-4d29-b6f1-46ad18efe379">
+
+##### 'sessions' table:
 <img width="1029" alt="Screenshot 2023-10-19 at 19 22 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9dc59408-8924-452a-a3c5-ad1a71b9dd1a">
 
 #### For the Demo purposes of this project we have created two departments - 'Merchandising' and 'Inventory'. We simulated having Super User and Regular Users, having specific roles at the departments they belong to. They authenticate themselves via username and password kept in the database:
@@ -756,5 +762,11 @@ CALL sp_insert_jewelry_into_jewelries(
     'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
 );
 ```
+##### 'jewerly' table:
 <img width="1368" alt="Screenshot 2023-10-20 at 14 08 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/17761f3f-3390-40ea-a727-08b608287d51">
+
+##### 'inventory' table:
+<img width="1183" alt="Screenshot 2023-10-20 at 14 20 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/126e29d1-d4a9-44c4-b786-4689648a40cb">
+
+
 
