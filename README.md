@@ -1289,14 +1289,21 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-1. If the shopping session has expired:
+1. The procedure checks if the shopping session has expired:
 <img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
 
-2. If there is any available quantity if the given item;
+##### Now we can login again (the password we enter is hashed again and compared with the hashed password kept in the databse):
+```plpgsql
+CALL sp_login_user(
+    'beatris@icloud.com',
+    '#6hhhhh');
+```
+
+2. The procedure checks if there is any available quantity if the given item;
 
 
-4. If there is enough available quantity;
-5. If the function's check passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
-6. Finally it calls a procedure that reduces the quantities in the 'inventories' table;
+4. The procedure checks if is enough available quantity;
+5. If the all checks passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
+6. Finally, another procedure is being called that reduces the quantities in the 'inventories' table;
 
 
