@@ -1289,17 +1289,45 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### We call the procedure with 'sessiond_id', so as to be able to authenticate the current customer, and we also provide the item ID and desired quantity:
+```plpgsql
+CALL sp_add_to_shopping_cart(
+    1,
+    1,
+    2
+);
+
+CALL sp_add_to_shopping_cart(
+    1,
+    1,
+    1
+);
+```
 1. The procedure checks if the shopping session has expired:
 <img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
 
-##### Now we can login again (the password we enter is hashed again and compared with the hashed password kept in the databse):
+##### Now we can login (the password we enter is hashed again and compared with the hashed password kept in the databse):
 ```plpgsql
 CALL sp_login_user(
     'beatris@icloud.com',
     '#6hhhhh');
 ```
 
-2. The procedure checks if there is any available quantity if the given item;
+2. The procedure checks if there is any available quantity of the given item;
+##### For example, if we add to our shopping cart 4 pieces of item with ID 3 (that initially had 4 pieces available), we will get the following result:
+
+<img width="551" alt="Screenshot 2023-10-20 at 18 53 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/18a5b31d-8691-4f12-8783-814878b0c92b">
+
+<img width="837" alt="Screenshot 2023-10-20 at 18 54 17" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/59f5fc32-ef86-4fdf-b670-04d72879e933">
+
+
+<img width="1253" alt="Screenshot 2023-10-20 at 18 51 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/307ed593-34a5-4209-90aa-74dae3c17229">
+
+##### If we try to get one more of the same item:
+
+<img width="552" alt="Screenshot 2023-10-20 at 18 58 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b98c1afd-dff5-4563-999d-9bd4f99f2902">
+
+
 
 
 4. The procedure checks if is enough available quantity;
