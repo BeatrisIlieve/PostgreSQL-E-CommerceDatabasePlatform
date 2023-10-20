@@ -1,6 +1,6 @@
-# PostgreSQL-E-Commerce-Database-Platform
+# <p align="center">PostgreSQL-E-Commerce-Database-Platform</p>
 
-## Entity Relationship Diagram:
+## <p align="center">Entity Relationship Diagram:</p>
 ![Diagram](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/82eb2acf-a104-46b1-bbda-d8ca7573cffc)
 
 ### <p align="center"> The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code. 
