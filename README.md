@@ -768,5 +768,76 @@ CALL sp_insert_jewelry_into_jewelries(
 ##### 'inventory' table:
 <img width="1183" alt="Screenshot 2023-10-20 at 14 20 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/126e29d1-d4a9-44c4-b786-4689648a40cb">
 
-
+#### After the items has been inserted, the Inventory department needs to declare available quantities. For that purpose, credentials and employee id must be passed to the next procedure (the 'session_id' field is needed in the cases when a customer is adding to or removing from their shopping cart which we will create later on):
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_add_quantity_into_inventory(
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
+        provided_employee_id CHAR(5),
+        provided_session_id INTEGER,
+        provided_jewelry_id INTEGER,
+        added_quantity INTEGER
+)
+AS
+$$
+DECLARE
+    access_denied CONSTANT TEXT := 'Access Denied: You do not have the required authorization to perform actions into this department.';
+    authorisation_failed CONSTANT TEXT := 'Authorization failed: Incorrect password';
+BEGIN
+    IF
+        provided_session_id IS NOT NULL
+    THEN
+        UPDATE
+            inventory
+        SET
+            session_id = provided_session_id,
+            quantity = quantity + added_quantity,
+            updated_at = DATE(NOW())
+        WHERE
+            jewelry_id = provided_jewelry_id;
+        UPDATE
+            jewelries
+        SET
+            is_active = TRUE
+        WHERE
+            id = provided_jewelry_id;
+    ELSE
+        IF NOT(
+            SELECT fn_role_authentication(
+                        'receiving_inventory', provided_employee_id
+                        )
+            )
+        THEN
+            SELECT fn_raise_error_message(access_denied);
+        END IF;
+        IF(
+            SELECT credentials_authentication(
+                provided_staff_user_role,
+                provided_staff_user_password,
+                provided_employee_id)
+            )IS TRUE
+        THEN
+            UPDATE
+                inventory
+            SET
+                employee_id = provided_employee_id::INTEGER,
+                quantity = quantity + added_quantity,
+                updated_at = DATE(NOW())
+            WHERE
+                jewelry_id = provided_jewelry_id;
+            UPDATE
+                jewelries
+            SET
+                is_active = TRUE
+            WHERE
+                id = provided_jewelry_id;
+        ELSE
+            SELECT fn_raise_error_message(authorisation_failed);
+        END IF;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
 
