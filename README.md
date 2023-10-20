@@ -1127,4 +1127,16 @@ CREATE TABLE
                     ON DELETE CASCADE
 );
 ```
+#### For the demo pusposes of this project, we have added three random payment providers in our database:
+```plpgsql
+CREATE TABLE payment_providers(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO payment_providers (name) VALUES
+    ('PayPal'),
+    ('Amazon Pay'),
+    ('Stripe');
+```
 
