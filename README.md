@@ -1162,4 +1162,18 @@ CREATE TABLE
                     ON DELETE RESTRICT
 );
 ```
-####
+#### 'transactions' table is related to 'orders':
+```plpgsql
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
+
+        CONSTRAINT fk_transactions_orders
+                FOREIGN KEY (order_id)
+                REFERENCES orders(id)
+                ON UPDATE RESTRICT
+                ON DELETE RESTRICT
+);
+```
