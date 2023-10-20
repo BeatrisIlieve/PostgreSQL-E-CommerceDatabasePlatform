@@ -362,7 +362,7 @@ CREATE TABLE
         last_name VARCHAR(30) NOT NULL,
         email VARCHAR(30) NOT NULL,
         phone_number VARCHAR(20) NOT NULL,
-        employed_at DATE DEFAULT DATE(NOW()),
+        employed_at DATE,
 
         CONSTRAINT fk_employees_staff_users
             FOREIGN KEY (staff_user_id)
@@ -555,7 +555,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         inventory_id INTEGER NOT NULL,
         operation VARCHAR(6) NOT NULL,
-        date TIMESTAMPTZ DEFAULT DATE(NOW()),
+        date TIMESTAMPTZ,
 
         CONSTRAINT fk_inventory_records_inventory
                      FOREIGN KEY (inventory_id)
@@ -668,7 +668,7 @@ BEGIN
             (
              provided_employee_id::INTEGER, 
              current_jewelry_id, 
-             DATE(NOW()), 
+             NOW(), 
              NULL, 
              NULL
              );
