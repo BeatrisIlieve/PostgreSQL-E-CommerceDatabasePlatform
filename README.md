@@ -1093,7 +1093,8 @@ CALL sp_remove_percent_from_discounts(
     2
 );
 ```
-##### The discount is deleted and the jewelry discount_price is set back to Null:
+##### The discount is deleted and the jewelry 'discount_price' is set back to Null:
+
 ##### 'discounts' table:
 <img width="1260" alt="Screenshot 2023-10-20 at 17 10 43" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/db2bb9c9-2176-4e85-9467-1a8fd325070d">
 
