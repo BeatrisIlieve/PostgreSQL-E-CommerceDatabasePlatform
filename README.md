@@ -1177,3 +1177,122 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
+#### The procedure 'sp_add_to_shopping_cart' performs a few checks:
+1. If the shopping session has expired;
+2. If there is any available quantity if the given item;
+3. If there is enough available quantity;
+4. If the function's check passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
+5. Finally it calls a procedure that reduces the quantities in the 'inventories' table;
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_add_to_shopping_cart(
+        provided_session_id INTEGER,
+        provided_jewelry_id INTEGER,
+        provided_quantity INTEGER
+    )
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT :=
+        'Your shopping session has expired. ' ||
+        'To continue shopping, please log in again.';
+
+    item_has_been_sold_out CONSTANT TEXT :=
+        'This item has been sold out.';
+
+    current_quantity INTEGER;
+
+    not_enough_quantity CONSTANT TEXT :=
+        ('There are only % left.', current_quantity);
+
+    old_expiration_time TIMESTAMP;
+BEGIN
+    old_expiration_time := (
+        SELECT
+            expiration_time
+        FROM
+            sessions
+        WHERE
+            id = provided_session_id
+        );
+
+    current_quantity := (
+        SELECT
+            quantity
+        FROM
+            inventory
+        WHERE
+            jewelry_id = provided_jewelry_id
+        );
+
+    IF
+         NOW() >= old_expiration_time
+    THEN
+        SELECT
+            fn_raise_error_message(
+                session_has_expired
+                );
+
+    ELSIF (
+        SELECT
+            is_active
+        FROM
+            jewelries
+        WHERE
+            id = provided_jewelry_id
+        ) IS FALSE
+    THEN
+        SELECT fn_raise_error_message(
+            item_has_been_sold_out
+            );
+
+    ELSIF
+        current_quantity < provided_quantity
+    THEN
+        CALL fn_raise_error_message(
+            not_enough_quantity
+            );
+
+    ELSE
+        IF provided_jewelry_id IN (
+            SELECT
+                jewelry_id
+            FROM
+                shopping_cart
+            WHERE
+                session_id = provided_session_id
+            )
+        THEN
+            UPDATE
+                shopping_cart
+            SET
+                quantity = quantity + provided_quantity
+            WHERE
+                jewelry_id = provided_jewelry_id;
+
+        ELSE
+            INSERT INTO
+                shopping_cart(
+                              session_id,
+                              jewelry_id,
+                              quantity
+                              )
+            VALUES
+                (provided_session_id,
+                 provided_jewelry_id,
+                 provided_quantity
+                 );
+        END IF;
+
+        CALL sp_remove_quantity_from_inventory(
+            provided_jewelry_id,
+            provided_quantity,
+            current_quantity
+            );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+<img width="601" alt="Screenshot 2023-10-20 at 18 10 18" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ba0089ab-a7e6-47cd-9258-0555f72849ca">
+
