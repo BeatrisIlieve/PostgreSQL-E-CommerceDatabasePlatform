@@ -878,5 +878,8 @@ CALL sp_add_quantity_into_inventory(
     1,
     10);
 ```
-##### 'inventory_records' table:
+##### 'inventory' table:
+<img width="1175" alt="Screenshot 2023-10-20 at 15 22 30" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/23a2cf71-385a-493f-b3ed-9825c0f9e3c3">
+
+##### 'inventory_records' table that keeps information about every single <ins>insert</ins>, <ins>update</ins> or <ins>delete</ins> on 'inventory' table:
 <img width="744" alt="Screenshot 2023-10-20 at 15 19 40" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/03278b21-39c8-41c7-974d-9a79fb6b8fd7">
