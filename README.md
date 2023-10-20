@@ -1333,7 +1333,37 @@ CALL sp_login_user(
 
 <img width="544" alt="Screenshot 2023-10-20 at 19 21 38" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a3c62c25-0353-4359-9bc9-c2d93100593f">
 
-
-6. Finally, another procedure is being called that reduces the quantities in the 'inventories' table;
+#### Afterwards, another procedure is being called that reduces the quantities in the 'inventories' table (also sets the files 'is_active' to FALSE if the quantity reaches 0 as we saw above):
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_remove_quantity_from_inventory(
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER,
+        current_quantity INTEGER
+)
+AS
+$$
+BEGIN
+    UPDATE
+        inventory
+    SET
+        quantity = quantity - requested_quantity,
+        deleted_at = NOW()
+    WHERE
+        jewelry_id = in_jewelry_id;
+    IF
+        current_quantity - requested_quantity = 0
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = FALSE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
 
 
