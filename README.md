@@ -754,4 +754,5 @@ CALL sp_insert_jewelry_into_jewelries(
     'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
 );
 ```
+<img width="1368" alt="Screenshot 2023-10-20 at 14 08 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/17761f3f-3390-40ea-a727-08b608287d51">
 
