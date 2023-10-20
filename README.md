@@ -1023,3 +1023,82 @@ CALL sp_insert_percent_into_discounts(
 ##### 'jewelries' table:
 <img width="1275" alt="Screenshot 2023-10-20 at 16 58 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9801abea-1700-4abd-bea2-8320af8c112b">
 
+#### To return back to regular price of an item we use the procedure down below:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_remove_percent_from_discounts(
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
+        provided_last_modified_by_emp_id CHAR(5),
+        provided_jewelry_id INTEGER
+)
+AS
+$$
+DECLARE
+    access_denied CONSTANT TEXT :=
+        'Access Denied: ' ||
+        'You do not have the required authorization to perform actions into this department.';
+
+    authorisation_failed CONSTANT TEXT :=
+        'Authorization failed: ' ||
+        'Incorrect password';
+BEGIN
+    IF NOT(
+        SELECT fn_role_authentication(
+                'merchandising',
+                provided_last_modified_by_emp_id
+                    )
+        )
+    THEN
+        SELECT fn_raise_error_message(
+            access_denied
+            );
+    END IF;
+
+        IF(
+            SELECT credentials_authentication(
+        provided_staff_user_role,
+        provided_staff_user_password,
+        provided_last_modified_by_emp_id)
+            )IS TRUE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            discount_price = NULL
+        WHERE
+            id = provided_jewelry_id;
+        UPDATE
+            discounts
+        SET
+            deleted_at = DATE(NOW())
+        WHERE
+            jewelry_id = provided_jewelry_id;
+
+    ELSE
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### We delete the discount applied to the item with ID 2:
+```plpgsql
+CALL sp_remove_percent_from_discounts(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    2
+);
+```
+##### The discount is deleted and the jewelry discount_price is set back to Null:
+##### 'discounts' table:
+<img width="1260" alt="Screenshot 2023-10-20 at 17 10 43" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/db2bb9c9-2176-4e85-9467-1a8fd325070d">
+
+##### 'jewelries' table:
+<img width="1317" alt="Screenshot 2023-10-20 at 17 11 19" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6bfc3d8f-9509-493d-af36-fb5bcf024e50">
+
+
+
