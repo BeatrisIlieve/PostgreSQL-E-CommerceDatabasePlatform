@@ -1198,7 +1198,7 @@ DECLARE
     current_quantity INTEGER;
 
     not_enough_quantity CONSTANT TEXT :=
-        ('There are only % left.', current_quantity);
+        'Not enough quantity';
 
     old_expiration_time TIMESTAMP;
 BEGIN
@@ -1244,7 +1244,7 @@ BEGIN
     ELSIF
         current_quantity < provided_quantity
     THEN
-        CALL fn_raise_error_message(
+        SELECT fn_raise_error_message(
             not_enough_quantity
             );
 
@@ -1326,6 +1326,10 @@ CALL sp_login_user(
 ##### If we try to get one more of the same item:
 
 <img width="552" alt="Screenshot 2023-10-20 at 18 58 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b98c1afd-dff5-4563-999d-9bd4f99f2902">
+
+##### If we try to get 10 items of jewelry with ID 10 (available only 9):
+
+<img width="541" alt="Screenshot 2023-10-20 at 19 13 34" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/eb652fb0-25f1-4964-a4c6-7e1d0fe1b38f">
 
 
 
