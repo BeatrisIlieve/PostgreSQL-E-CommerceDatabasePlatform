@@ -1139,4 +1139,27 @@ INSERT INTO payment_providers (name) VALUES
     ('Amazon Pay'),
     ('Stripe');
 ```
+#### What connects the 'shopping_cart' and 'payment_providers' is the 'orders' table:
+```plpgsql
+CREATE TABLE
+    orders(
+        id SERIAL PRIMARY KEY,
+        shopping_cart_id INTEGER,
+        payment_provider_id INTEGER NOT NULL,
+        total_amount DECIMAL(8, 2) NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
 
+        CONSTRAINT fk_orders_shopping_cart
+                    FOREIGN KEY (shopping_cart_id)
+                    REFERENCES shopping_cart(id)
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT ,
+
+        CONSTRAINT fk_orders_payment_providers
+                    FOREIGN KEY (payment_provider_id)
+                    REFERENCES payment_providers(id)
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT
+);
+```
+####
