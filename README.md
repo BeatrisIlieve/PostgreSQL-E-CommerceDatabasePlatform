@@ -745,7 +745,7 @@ CALL sp_insert_jewelry_into_jewelries(
 ```
 <img width="1001" alt="Screenshot 2023-10-20 at 13 48 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d0cf29e0-78e0-44b4-8d1c-73e0edf859ae">
 
-##### Correct input:
+##### Correct input ('sp_insert_jewelry_into_jewelries' should be executed after 'trigger_fn_insert_new_entity_into_inventory_records_on_create', presented down below, has been created in order to observe the correct flow of the demo):
 ```plpgsql
 CALL sp_insert_jewelry_into_jewelries(
     'merchandising_staff_user_second',
@@ -762,7 +762,7 @@ CALL sp_insert_jewelry_into_jewelries(
     'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
 );
 ```
-##### The trigger function below serves to automatically add records when an insert operation occurs on the 'inventory' table proceeded by inserting on the 'jewelries' one:
+##### 'trigger_fn_insert_new_entity_into_inventory_records_on_create' serves to automatically add records when an insert operation occurs on the 'inventory' table proceeded by inserting on the 'jewelries' one:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_entity_into_inventory_records_on_create()
