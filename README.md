@@ -762,85 +762,7 @@ CALL sp_insert_jewelry_into_jewelries(
     'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
 );
 ```
-##### 'jewerly' table:
-<img width="1368" alt="Screenshot 2023-10-20 at 14 08 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/17761f3f-3390-40ea-a727-08b608287d51">
-
-##### 'inventory' table:
-<img width="1183" alt="Screenshot 2023-10-20 at 14 20 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/126e29d1-d4a9-44c4-b786-4689648a40cb">
-
-#### After the items has been inserted, the Inventory department needs to declare available quantities. For that purpose, credentials and employee id must be passed to the next procedure (the 'session_id' field is needed in the cases when a customer is adding to or removing from their shopping cart which we will create later on):
-```plpgsql
-CREATE OR REPLACE PROCEDURE
-    sp_add_quantity_into_inventory(
-        provided_staff_user_role VARCHAR(30),
-        provided_staff_user_password VARCHAR(9),
-        provided_employee_id CHAR(5),
-        provided_session_id INTEGER,
-        provided_jewelry_id INTEGER,
-        added_quantity INTEGER
-)
-AS
-$$
-DECLARE
-    access_denied CONSTANT TEXT := 'Access Denied: You do not have the required authorization to perform actions into this department.';
-    authorisation_failed CONSTANT TEXT := 'Authorization failed: Incorrect password';
-BEGIN
-    IF
-        provided_session_id IS NOT NULL
-    THEN
-        UPDATE
-            inventory
-        SET
-            session_id = provided_session_id,
-            quantity = quantity + added_quantity,
-            updated_at = NOW()
-        WHERE
-            jewelry_id = provided_jewelry_id;
-        UPDATE
-            jewelries
-        SET
-            is_active = TRUE
-        WHERE
-            id = provided_jewelry_id;
-    ELSE
-        IF NOT(
-            SELECT fn_role_authentication(
-                        'inventory', provided_employee_id
-                        )
-            )
-        THEN
-            SELECT fn_raise_error_message(access_denied);
-        END IF;
-        IF(
-            SELECT credentials_authentication(
-                provided_staff_user_role,
-                provided_staff_user_password,
-                provided_employee_id)
-            )IS TRUE
-        THEN
-            UPDATE
-                inventory
-            SET
-                employee_id = provided_employee_id::INTEGER,
-                quantity = quantity + added_quantity,
-                updated_at = NOW()
-            WHERE
-                jewelry_id = provided_jewelry_id;
-            UPDATE
-                jewelries
-            SET
-                is_active = TRUE
-            WHERE
-                id = provided_jewelry_id;
-        ELSE
-            SELECT fn_raise_error_message(authorisation_failed);
-        END IF;
-    END IF;
-END;
-$$
-LANGUAGE plpgsql;
-```
-##### The trigger function below serves to automatically add records when an insert operation occurs on the 'inventory' table:
+##### The trigger function below serves to automatically add records when an insert operation occurs on the 'inventory' table proceeded by inserting on the 'jewelries' one:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_new_entity_into_inventory_records_on_create()
@@ -865,21 +787,27 @@ CREATE OR REPLACE TRIGGER
 AFTER INSERT ON
     inventory
 FOR EACH ROW
-EXECUTE FUNCTION 
+EXECUTE FUNCTION
     trigger_fn_insert_new_entity_into_inventory_records_on_create();
 ```
-#### We call the function:
-```plpgsql
-CALL sp_add_quantity_into_inventory(
-    'inventory_staff_user_first',
-    'inventory_password_first',
-    '10004',
-    NULL,
-    1,
-    10);
-```
-##### 'inventory' table:
-<img width="1175" alt="Screenshot 2023-10-20 at 15 22 30" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/23a2cf71-385a-493f-b3ed-9825c0f9e3c3">
+##### 'jewerly' table (the 'is_active' field is 'false' because no quantity has been added yet):
+<img width="1328" alt="Screenshot 2023-10-20 at 15 59 03" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/55a4fdc0-bbef-4321-a15f-8e6b1d3f4c48">
 
-##### 'inventory_records' table that keeps information about every single <ins>insert</ins>, <ins>update</ins> or <ins>delete</ins> on 'inventory' table:
-<img width="744" alt="Screenshot 2023-10-20 at 15 19 40" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/03278b21-39c8-41c7-974d-9a79fb6b8fd7">
+##### 'inventory' table (the 'session_id' field is needed in the cases when a customer is adding to or removing from their shopping cart which we will create later on):
+<img width="1171" alt="Screenshot 2023-10-20 at 16 00 07" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/0072fd2b-91e1-4b25-a510-7d3e3d304f5c">
+
+##### 'inventory_records' table that keeps information about every single <ins>create</ins>, <ins>update</ins> or <ins>delete</ins> operation on 'inventory' table:
+<img width="736" alt="Screenshot 2023-10-20 at 15 59 42" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fca895f6-e7a7-43db-940d-2fe4ae9ed825">
+
+
+#### After the items has been inserted, the Inventory department needs to declare available quantities. For that purpose, credentials and employee id must be passed to the next procedure :
+```plpgsql
+
+```
+
+
+##### 'inventory' table:
+
+
+##### 'inventory_records' table :
+
