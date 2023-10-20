@@ -1101,5 +1101,30 @@ CALL sp_remove_percent_from_discounts(
 ##### 'jewelries' table:
 <img width="1317" alt="Screenshot 2023-10-20 at 17 11 19" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6bfc3d8f-9509-493d-af36-fb5bcf024e50">
 
+#### The 'shopping_cart' table is related to the 'sessions' and 'jewelries' ones:
+```plpgsql
+CREATE TABLE
+    shopping_cart(
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER DEFAULT NULL,
+        jewelry_id INTEGER DEFAULT NULL,
+        quantity INTEGER DEFAULT 0,
 
+        CONSTRAINT ck_shopping_cart_quantity
+            CHECK ( quantity >= 0 ),
+
+
+        CONSTRAINT fk_shopping_cart_sessions
+                    FOREIGN KEY (session_id)
+                    REFERENCES sessions(id)
+                    ON UPDATE CASCADE
+                    ON DELETE SET NULL,
+
+        CONSTRAINT fk_shopping_cart_jewelries
+                    FOREIGN KEY (jewelry_id)
+                    REFERENCES jewelries(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+```
 
