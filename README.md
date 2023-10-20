@@ -1177,12 +1177,7 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
-#### The procedure 'sp_add_to_shopping_cart' performs a few tasks:
-1. If the shopping session has expired;
-2. If there is any available quantity if the given item;
-3. If there is enough available quantity;
-4. If the function's check passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
-5. Finally it calls a procedure that reduces the quantities in the 'inventories' table;
+#### The procedure 'sp_add_to_shopping_cart' performs a few checks:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_add_to_shopping_cart(
@@ -1294,5 +1289,14 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-1. <img width="601" alt="Screenshot 2023-10-20 at 18 10 18" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ba0089ab-a7e6-47cd-9258-0555f72849ca">
+1. If the shopping session has expired:
+<img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
+
+2. If there is any available quantity if the given item;
+
+
+4. If there is enough available quantity;
+5. If the function's check passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
+6. Finally it calls a procedure that reduces the quantities in the 'inventories' table;
+
 
