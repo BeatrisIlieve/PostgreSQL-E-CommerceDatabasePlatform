@@ -580,5 +580,178 @@ CREATE TABLE
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
 ```
+#### The next procedure is responsible for inserting items into the 'jewelries' table after authenticating a user belonging to the 'Merchandising' department:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_insert_jewelry_into_jewelries(
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(9),
+        provided_employee_id CHAR(5),
+        provided_type_id INTEGER,
+        provided_name VARCHAR(100),
+        provided_image_url VARCHAR(200) ,
+        provided_regular_price DECIMAL(7, 2),
+        provided_metal_color VARCHAR(12),
+        provided_diamond_carat_weight VARCHAR(10),
+        provided_diamond_clarity VARCHAR(10),
+        provided_diamond_color VARCHAR(5),
+        provided_description TEXT
+)
+AS
+$$
+DECLARE
+    current_jewelry_id INTEGER;
+    
+    access_denied CONSTANT TEXT := 
+        'Access Denied: ' ||
+        'You do not have the required authorization to perform actions into this department.';
+    
+    authorisation_failed CONSTANT TEXT := 
+        'Authorization failed: Incorrect password';
+BEGIN
+    IF NOT (
+        SELECT fn_role_authentication(
+                    'merchandising', provided_employee_id
+                )
+        )
+    THEN
+        SELECT fn_raise_error_message(
+            access_denied
+            );
+    END IF;
+    
+    IF (
+        SELECT credentials_authentication(
+            provided_staff_user_role,
+            provided_staff_user_password,
+            provided_employee_id)
+        ) IS TRUE
+    THEN
+        INSERT INTO
+            jewelries(
+                      type_id, name, image_url, 
+                      regular_price, metal_color, 
+                      diamond_carat_weight, 
+                      diamond_clarity, 
+                      diamond_color, 
+                      description
+                )
+        VALUES
+            (
+            provided_type_id,
+            provided_name,
+            provided_image_url,
+            provided_regular_price,
+            provided_metal_color,
+            provided_diamond_carat_weight,
+            provided_diamond_clarity,
+            provided_diamond_color,
+            provided_description
+            );
 
+        current_jewelry_id := (
+            SELECT
+                MAX(id)
+            FROM
+                jewelries
+        );
+
+        INSERT INTO
+            inventory(
+                      employee_id, 
+                      jewelry_id, 
+                      created_at, 
+                      updated_at, 
+                      deleted_at
+                      )
+        VALUES
+            (
+             provided_employee_id::INTEGER, 
+             current_jewelry_id, 
+             DATE(NOW()), 
+             NULL, 
+             NULL
+             );
+    ELSE
+        SELECT fn_raise_error_message(authorisation_failed);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### Let us test the <ins>staff authentication process</ins> by inserting an item into the 'jewelries' table. For that purpose we will need to provide a <ins>username</ins>, <ins>password</ins>, <ins>employee id</ins> and item characteristics:
+```plpgsql
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_first',
+    'merchandising_password_first',
+    '10004',
+    1,
+    'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697350935/Rings/BUDDING_ROUND_BRILLIANT_DIAMOND_HALO_ENGAGEMENT_RING_s1ydsv.webp',
+    19879.00,
+    'ROSE GOLD',
+    '1.75ctw',
+    'SI1-SI2',
+    'G-H',
+    'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
+);
+```
+##### From the tables above, we can see that every employee ID is retated to a 'staff_users' table with his/her credentials. So if we enter correct credentials but they do NOT correspond to employee ID (10004 that is related to the 'Inventory' and not Merchandising) passed to the 'sp_insert_jewelry_into_jewelries' procedure, we will get the following error message:
+<img width="727" alt="Screenshot 2023-10-20 at 13 30 15" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ed92c365-48b9-4e56-90f9-3a749c6b9055">
+
+##### Let us insert an earring into the 'jelelries' table using correct credentions, correct ID, meaning that it belongs to the devoted department, however the ID is assigned to another employee:
+```plpgsql
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_second',
+    'merchandising_password_second',
+    '10002',
+    2,
+    'ALMOST A HALO ROUND DIAMOND STUD EARRING',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351117/Rings/ALMOST_A_HALO_ROUND_DIAMOND_STUD_EARRING_giloj0.webp',
+    3749.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This Almost A Halo Round Diamond Stud Earring is the perfect choice for any occasion. It features an 0.60cttw round diamonds set in a half halo design, creating a unique and timeless look. Crafted from the finest materials, this earring is sure to be an eye-catching addition to any collection.'
+);
+```
+<img width="1005" alt="Screenshot 2023-10-20 at 13 46 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/988c88a8-1168-4e7a-b42b-af45d6c01101">
+
+##### Wrong password or username:
+```plpgsql
+CALL sp_insert_jewelry_into_jewelries(
+    '_staff_user_first',
+    'merchandising_password_first',
+    '10002',
+    3,
+    'DROP HALO PENDANT NECKLACE',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351447/Rings/DROP_HALO_PENDANT_NECKLACE_u811d4.webp',
+    17999.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This Drop Halo Pendant Necklace is a true statement piece. Crafted with a luxurious drop design, it combines stylish elegance with sophisticated charm. Its brilliant gold plating adds timeless sophistication and shine to any outfit. Refined and timeless, this necklace will ensure you stand out in any crowd.'
+);
+```
+<img width="1001" alt="Screenshot 2023-10-20 at 13 48 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d0cf29e0-78e0-44b4-8d1c-73e0edf859ae">
+
+##### Correct input:
+```plpgsql
+CALL sp_insert_jewelry_into_jewelries(
+    'merchandising_staff_user_second',
+    'merchandising_password_second',
+    '10003',
+    4,
+    'CLASSIC DIAMOND TENNIS BRACELET',
+    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351731/Rings/CLASSIC_DIAMOND_TENNIS_BRACELET_f1etis.webp',
+    7249.00,
+    'ROSE GOLD',
+    '1.11ctw',
+    'SI1-SI2',
+    'G-H',
+    'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
+);
+```
 
