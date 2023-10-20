@@ -1177,6 +1177,37 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
+#### In order to proceed with actual shopping activities, we need to create a function that checks if the shopping session has exprired, which will be called from the procedures later on:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_check_session_has_expired(
+        provided_session_id INTEGER
+)
+RETURNS BOOLEAN
+AS
+$$
+DECLARE
+    old_expiration_time TIMESTAMPTZ;
+BEGIN
+    old_expiration_time := (
+        SELECT
+            expiration_time
+        FROM
+            sessions
+        WHERE
+            id = provided_session_id
+        );
+    IF
+        NOW() >= old_expiration_time
+    THEN
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
 #### The procedure 'sp_add_to_shopping_cart' performs a few checks:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
@@ -1200,17 +1231,7 @@ DECLARE
     not_enough_quantity CONSTANT TEXT :=
         'Not enough quantity';
 
-    old_expiration_time TIMESTAMP;
 BEGIN
-    old_expiration_time := (
-        SELECT
-            expiration_time
-        FROM
-            sessions
-        WHERE
-            id = provided_session_id
-        );
-
     current_quantity := (
         SELECT
             quantity
@@ -1220,8 +1241,11 @@ BEGIN
             jewelry_id = provided_jewelry_id
         );
 
-    IF
-         NOW() >= old_expiration_time
+    IF (
+        SELECT fn_check_session_has_expired(
+            provided_session_id
+            )
+        ) IS TRUE
     THEN
         SELECT
             fn_raise_error_message(
@@ -1303,7 +1327,7 @@ CALL sp_add_to_shopping_cart(
     1
 );
 ```
-1. The procedure checks if the shopping session has expired:
+1. If the shopping session has expired:
 <img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
 
 ##### Now we can login (the password we enter is hashed again and compared with the hashed password kept in the databse):
