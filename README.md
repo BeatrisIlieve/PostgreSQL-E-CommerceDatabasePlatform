@@ -1488,4 +1488,18 @@ CALL sp_remove_from_shopping_cart(
 ##### 'inventory_records' table:
 <img width="749" alt="Screenshot 2023-10-21 at 16 10 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08124a35-6f1b-447e-b5c2-3648f26100ed">
 
+#### The final steps are to complete the order and store information about the money transaction. Firstly, we need to create a `transactions' table:
+```plpgsql
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
 
+        CONSTRAINT fk_transactions_orders
+                FOREIGN KEY (order_id)
+                REFERENCES orders(id)
+                ON UPDATE RESTRICT
+                ON DELETE RESTRICT
+);
+```
