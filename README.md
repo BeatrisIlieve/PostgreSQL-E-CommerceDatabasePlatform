@@ -1330,7 +1330,7 @@ CALL sp_add_to_shopping_cart(
 1. If the shopping session has expired:
 <img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
 
-##### Now we can login (the password we enter is hashed again and compared with the hashed password kept in the databse):
+##### Now we can login and call sp_add_to_shopping_cart as above (the password we enter is hashed again and compared with the hashed password kept in the databse):
 ```plpgsql
 CALL sp_login_user(
     'beatris@icloud.com',
@@ -1389,5 +1389,103 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### In order to remove an item from the shopping cart, we select the procedure 'sp_remove_from_shopping_cart' that executes the usual checks, and then invokes the  'sp_return_back_quantity_to_inventory':
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_remove_from_shopping_cart(
+        provided_session_id INTEGER,
+        provided_jewelry_id INTEGER,
+        provided_quantity INTEGER
+    )
+AS
+$$
+DECLARE
+    session_has_expired CONSTANT TEXT :=
+        'Your shopping session has expired. ' ||
+        'To continue shopping, please log in again.';
+
+BEGIN
+    IF (
+        SELECT fn_check_session_has_expired(
+            provided_session_id
+            )
+        ) IS TRUE
+    THEN
+        SELECT
+            fn_raise_error_message(
+                session_has_expired
+                );
+    ELSE
+        CALL sp_return_back_quantity_to_inventory(
+            provided_session_id,
+            provided_jewelry_id,
+            provided_quantity
+            );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+Updates the quantities both in the shopping cart and inventory:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_return_back_quantity_to_inventory(
+        in_session_id INTEGER,
+        in_jewelry_id INTEGER,
+        requested_quantity INTEGER
+)
+AS
+$$
+BEGIN
+    UPDATE
+        inventory
+    SET
+        session_id = in_session_id,
+        quantity = quantity + requested_quantity,
+        updated_at = NOW()
+    WHERE
+        jewelry_id = in_jewelry_id;
+    IF(
+        SELECT
+            is_active
+        FROM
+            jewelries
+        WHERE
+            id = in_jewelry_id
+        ) IS FALSE
+    THEN
+        UPDATE
+            jewelries
+        SET
+            is_active = TRUE
+        WHERE
+            id = in_jewelry_id;
+    END IF;
+    UPDATE
+        shopping_cart
+    SET
+        quantity = quantity - requested_quantity
+    WHERE
+        jewelry_id = in_jewelry_id;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### Let us remove 4 pieces of item with ID 3 (we currently have 5 pieces added into the shopping cart). Here, we need to provided session ID, as well as jewelry ID and quantity:
+```plpgsql
+CALL sp_remove_from_shopping_cart(
+    1,
+    3,
+    4
+);
+```
+##### `shopping_cart' table:
+<img width="542" alt="Screenshot 2023-10-21 at 16 08 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9a95a5d0-b4f7-401b-88cd-525f10e4f77d">
+
+##### 'inventory' table
+<img width="1010" alt="Screenshot 2023-10-21 at 16 10 33" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b8acf016-9b31-4aa7-a4a6-1ca36163ac1d">
+
+##### 'inventory_records' table:
+<img width="749" alt="Screenshot 2023-10-21 at 16 10 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08124a35-6f1b-447e-b5c2-3648f26100ed">
 
 
