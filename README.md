@@ -1304,6 +1304,7 @@ BEGIN
         END IF;
 
         CALL sp_remove_quantity_from_inventory(
+            provided_session_id,
             provided_jewelry_id,
             provided_quantity,
             current_quantity
@@ -1361,6 +1362,7 @@ CALL sp_login_user(
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_remove_quantity_from_inventory(
+        in_session_id INTEGER,
         in_jewelry_id INTEGER,
         requested_quantity INTEGER,
         current_quantity INTEGER
@@ -1372,6 +1374,7 @@ BEGIN
         inventory
     SET
         quantity = quantity - requested_quantity,
+        session_id = in_session_id,
         deleted_at = NOW()
     WHERE
         jewelry_id = in_jewelry_id;
