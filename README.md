@@ -1503,3 +1503,222 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
+#### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details, and most importantly - available balance, so we can check if the transfer could be procedeed. After the 'sp_complete_order' procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the 'sp_transfer_money' procedure:
+```plgpsql
+CREATE OR REPLACE PROCEDURE
+    sp_complete_order(
+    provided_session_id INTEGER,
+    provided_first_name VARCHAR(30),
+    provided_last_name VARCHAR(30),
+    provided_phone_number VARCHAR(20),
+    provided_current_balance DECIMAL(8, 2),
+    provided_payment_provider VARCHAR(100)
+)
+AS
+$$
+DECLARE
+    provider_not_supported CONSTANT TEXT :=
+        'Payment provider not available. ' ||
+        'Please choose "PayPal", "Amazon Pay" or "Stripe" and try again.' ;
+
+    current_total_amount DECIMAL(8, 2);
+
+    provided_customer_id INTEGER;
+
+    current_payment_provider_id INTEGER;
+BEGIN
+    IF
+        provided_payment_provider NOT IN (
+        SELECT
+            name
+        FROM
+            payment_providers
+        )
+    THEN
+        SELECT fn_raise_error_message(provider_not_supported);
+    END IF;
+
+    current_payment_provider_id := (
+        SELECT
+            id
+        FROM
+            payment_providers
+        WHERE
+            name = provided_payment_provider
+        );
+
+    provided_customer_id := (
+            SELECT
+                cd.id
+            FROM
+                customer_details AS cd
+            JOIN
+                customer_users AS cu
+            ON
+                cd.customer_user_id = cu.id
+            JOIN
+                sessions AS s
+            ON
+                cu.id = s.customer_id
+            WHERE
+                s.id = provided_session_id
+            );
+
+    UPDATE
+        customer_details
+    SET
+        first_name = provided_first_name,
+        last_name = provided_last_name,
+        phone_number = provided_phone_number,
+        current_balance = provided_current_balance,
+        payment_provider = provided_payment_provider
+    WHERE
+        id = provided_customer_id;
+
+    current_total_amount := (
+        SELECT
+            SUM((CASE
+                WHEN j.discount_price IS NULL THEN j.regular_price
+                ELSE j.discount_price
+            END) * sc.quantity)
+        FROM
+            jewelries AS j
+        JOIN
+            shopping_cart AS sc
+        ON
+            j.id = sc.jewelry_id
+        JOIN
+            sessions AS s
+        ON
+            sc.session_id = s.id
+        WHERE
+            s.id = provided_session_id
+        );
+
+    INSERT INTO orders
+        (session_id, payment_provider_id, total_amount)
+    VALUES
+        (provided_session_id, current_payment_provider_id, current_total_amount);
+
+    CALL sp_transfer_money(provided_customer_id, provided_current_balance, current_total_amount);
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### In case of insufficient balance, an error would be raised. Otherwise, data would be inserted into the 'transactions' and 'orders' tables:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_transfer_money(
+        provided_customer_id INTEGER,
+        available_balance DECIMAL(8, 2),
+        needed_balance DECIMAL(8, 2)
+)
+AS
+$$
+DECLARE
+    insufficient_balance CONSTANT TEXT :=
+        ('Insufficient balance to complete the transaction. ' ||
+         'Needed amount: %', needed_balance);
+
+    current_order_id INTEGER;
+BEGIN
+    IF
+        (available_balance - needed_balance) < 0
+    THEN
+        SELECT fn_raise_error_message(insufficient_balance);
+
+    ELSE
+        UPDATE
+            customer_details
+        SET
+            current_balance = current_balance - needed_balance
+        WHERE
+            id = provided_customer_id;
+
+        current_order_id :=(
+            SELECT
+                o.id
+            FROM
+                orders AS o
+            JOIN
+                shopping_cart AS sc
+            ON
+                o.session_id = sc.id
+            JOIN
+                sessions AS s
+            ON
+                sc.session_id = s.id
+            JOIN
+                customer_users AS cu
+            ON
+                s.customer_id = cu.id
+            WHERE
+                cu.id = provided_customer_id
+                        AND
+                o.is_completed = FALSE
+            );
+
+            UPDATE
+                orders
+            SET
+                is_completed = True
+            WHERE
+                id = current_order_id;
+
+
+            INSERT INTO
+                transactions(
+                             order_id,
+                             amount,
+                             date
+                             )
+            VALUES
+                (
+                 current_order_id,
+                 needed_balance,
+                 NOW()
+                );
+
+                UPDATE
+                    shopping_cart
+                SET
+                    quantity = 0,
+                    jewelry_id = NULL,
+                    session_id = NULL
+                WHERE
+                    session_id = (
+                        SELECT
+                            s.id
+                        FROM
+                            sessions AS s
+                        JOIN
+                            customer_users AS cu
+                        ON
+                            s.customer_id = cu.id
+                        WHERE
+                            cu.id = provided_customer_id
+                        );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### Let us complete the order:
+```plpgsql
+CALL sp_complete_order(
+    1,
+    'Beatris',
+    'Ilieve',
+    '000000000',
+    100000.00,
+    'PayPal'
+);
+```
+##### 'customer_details' table:
+<img width="1017" alt="Screenshot 2023-10-21 at 17 55 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a29b6b5f-6b0a-4ea7-8a12-5412e9c33747">
+
+##### 'orders' table:
+<img width="839" alt="Screenshot 2023-10-21 at 17 56 02" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6a74168a-d834-4488-a279-76bcf00852ad">
+
+##### 'transactions' table:
+<img width="675" alt="Screenshot 2023-10-21 at 17 56 31" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/efa007ce-c4f9-4b2b-9275-aefe637af88e">
