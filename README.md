@@ -1720,6 +1720,41 @@ CALL sp_complete_order(
 ##### 'transactions' table:
 <img width="675" alt="Screenshot 2023-10-21 at 17 56 31" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/efa007ce-c4f9-4b2b-9275-aefe637af88e">
 
-#### Finally we will create a few 'Views', to which the Superuser would be having an access to, so as to check <ins>of what type are the most sold jewelries and what is the total sum of transactions made to pay for those</ins>. To create a better image, it would be good to create a few more customers and process a few more transactions:
-##### (we inserted the customers data directly into the tables; the inserts and update lines you can find into the source code file)
+#### Finally we will create a few 'Views', to which the Superuser would be having an access to, so as to check <ins>of what type are the most sold jewelries and what is the total sum of transactions made to pay for those</ins>. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
+```plpgsql
+SELECT fn_register_user('welch@email.com', '#6hhh', '#6hhh');
+CALL sp_add_to_shopping_cart(2, 2, 3);
+CALL sp_complete_order(
+    2,
+    'Welch',
+    'Gorries',
+    '711-704-9768',
+    39556.55,
+    'Amazon Pay'
+);
+
+SELECT fn_register_user('kellie@email.com', '#6hhh', '#6hhh');
+CALL sp_add_to_shopping_cart(3, 3, 1);
+CALL sp_complete_order(
+    3,
+    'Kellie',
+    'Minihane',
+    '231-204-9598',
+    73205.18,
+    'PayPal'
+);
+
+
+SELECT fn_register_user('flora@email.com', '#6hhh', '#6hhh');
+CALL sp_add_to_shopping_cart(4, 2, 3);
+CALL sp_complete_order(
+    4,
+    'Flora',
+    'Keating',
+    '203-679-4950',
+    52205.18,
+    'Stripe'
+);
+```
+
 
