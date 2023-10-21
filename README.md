@@ -1504,7 +1504,7 @@ CREATE TABLE
 );
 ```
 #### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details, and most importantly - available balance, so we can check if the transfer could be procedeed. After the 'sp_complete_order' procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the 'sp_transfer_money' procedure:
-```plgpsql
+```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_complete_order(
     provided_session_id INTEGER,
