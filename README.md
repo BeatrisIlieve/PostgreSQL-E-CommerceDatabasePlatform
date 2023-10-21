@@ -1759,5 +1759,27 @@ CALL sp_complete_order(
     'Stripe'
 );
 ```
+##### 'customers_users' table:
+<img width="1077" alt="Screenshot 2023-10-21 at 19 53 01" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9558d108-c157-455c-ac13-9c5f0092bc18">
+
+##### 'customers_details' table:
+<img width="1155" alt="Screenshot 2023-10-21 at 19 53 24" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1c5abd4c-5545-4db6-ba6e-dcc78dd15344">
+
+##### 'sessions' table:
+<img width="1054" alt="Screenshot 2023-10-21 at 19 53 43" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fdd38424-1cce-404e-a7c6-b62eac4279c3">
+
+##### 'inventory' table:
+
+<img width="1286" alt="Screenshot 2023-10-21 at 19 54 45" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/72848649-e76b-4e0b-aa47-f5740c087f58">
+
+##### 'Inventory_records' table:
+
+<img width="753" alt="Screenshot 2023-10-21 at 19 55 04" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b506c047-d972-47cb-a17a-c01fee700cc0">
+
+##### 'orders' table:
+<img width="846" alt="Screenshot 2023-10-21 at 19 55 24" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c0e520b9-0886-4d39-be9d-247e3a1b7083">
+
+##### 'transactions' table:
+<img width="682" alt="Screenshot 2023-10-21 at 19 55 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9d60dff1-cf11-41b1-acaf-d06b8e71e673">
 
 
