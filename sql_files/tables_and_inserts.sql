@@ -207,3 +207,58 @@ CREATE TABLE
         CONSTRAINT ck_discounts_percentage
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
+
+CREATE TABLE
+    shopping_cart(
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL ,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 0,
+
+        CONSTRAINT ck_shopping_cart_quantity
+            CHECK ( quantity >= 0 ),
+
+
+        CONSTRAINT fk_shopping_cart_sessions
+                    FOREIGN KEY (session_id)
+                    REFERENCES sessions(id)
+                    ON UPDATE CASCADE
+                    ON DELETE SET NULL,
+
+        CONSTRAINT fk_shopping_cart_jewelries
+                    FOREIGN KEY (jewelry_id)
+                    REFERENCES jewelries(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+
+CREATE TABLE payment_providers(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO payment_providers (name) VALUES
+    ('PayPal'),
+    ('Amazon Pay'),
+    ('Stripe');
+
+CREATE TABLE
+    orders(
+        id INTEGER NOT NULL PRIMARY KEY,
+        shopping_cart_id INTEGER,
+        payment_provider_id INTEGER NOT NULL,
+        total_amount DECIMAL(8, 2) NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
+
+        CONSTRAINT fk_orders_shopping_cart_id
+                    FOREIGN KEY (shopping_cart_id)
+                    REFERENCES shopping_cart(id)
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT ,
+
+        CONSTRAINT fk_orders_payment_providers
+                    FOREIGN KEY (payment_provider_id)
+                    REFERENCES payment_providers(id)
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT
+);
