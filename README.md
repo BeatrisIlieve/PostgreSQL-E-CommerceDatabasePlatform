@@ -3,7 +3,7 @@
 ![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/226774e6-ea63-46c2-9dbf-1cdee00cb014)
 
 ### <p align="center">The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code.</p> 
-#### <p align="center">The provided input data is intended solely for demonstration and testing purposes, facilitating the evaluation and verification of the code's functionality.</p>
+#### <p align="center">Input data is provided for demonstration and testing purposes, facilitating the evaluation and verification of the code's functionality.</p>
 
 #### We have used the <ins>SHA-256</ins> hash encription for storing customer users passwords in the database:
 ```plpgsql
