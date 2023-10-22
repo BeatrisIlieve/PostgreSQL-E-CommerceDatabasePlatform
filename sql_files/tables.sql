@@ -24,3 +24,17 @@ CREATE TABLE
                      ON UPDATE CASCADE
                      ON DELETE CASCADE
 );
+
+CREATE TABLE sessions(
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    is_active BOOLEAN,
+    session_data JSONB NOT NULL,
+    expiration_time TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT fk_sessions_customer_users
+                     FOREIGN KEY (customer_id)
+                     REFERENCES customer_users
+                     ON UPDATE CASCADE
+                     ON DELETE CASCADE
+);
