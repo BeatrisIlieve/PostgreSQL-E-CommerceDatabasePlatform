@@ -1,13 +1,9 @@
 # <p align="center">PostgreSQL-E-Commerce-Database-Platform</p>
-
 ## <p align="center">Entity Relationship Diagram:</p>
-![Diagram](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/82eb2acf-a104-46b1-bbda-d8ca7573cffc)
+![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/226774e6-ea63-46c2-9dbf-1cdee00cb014)
 
-### <p align="center"> The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code. 
-### The provided input data is intended solely for demonstration and testing purposes, facilitating the evaluation and verification of the code's functionality. </p>
-
-#### Furthermore, we created process similiar to bank transfer verifying that a customer has enough balance to process a transaction with the total cost of their order.
-### We have created process similiar to generating cookie tokens using JSON format
+### <p align="center">The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code.</p> 
+#### <p align="center">The provided input data is intended solely for demonstration and testing purposes, facilitating the evaluation and verification of the code's functionality.</p>
 
 #### We have used the <ins>SHA-256</ins> hash encription for storing customer users passwords in the database:
 ```plpgsql
