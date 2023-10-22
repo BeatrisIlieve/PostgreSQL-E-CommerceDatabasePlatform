@@ -262,3 +262,17 @@ CREATE TABLE
                     ON UPDATE RESTRICT
                     ON DELETE RESTRICT
 );
+
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
+        date TIMESTAMPTZ,
+
+        CONSTRAINT fk_transactions_orders
+                FOREIGN KEY (order_id)
+                REFERENCES orders(id)
+                ON UPDATE RESTRICT
+                ON DELETE RESTRICT
+);
