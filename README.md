@@ -1679,25 +1679,6 @@ BEGIN
                  NOW()
                 );
 
-                UPDATE
-                    shopping_cart
-                SET
-                    quantity = 0,
-                    jewelry_id = NULL,
-                    session_id = NULL
-                WHERE
-                    session_id = (
-                        SELECT
-                            s.id
-                        FROM
-                            sessions AS s
-                        JOIN
-                            customer_users AS cu
-                        ON
-                            s.customer_id = cu.id
-                        WHERE
-                            cu.id = provided_customer_id
-                        );
     END IF;
 END;
 $$
