@@ -1493,6 +1493,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         order_id INTEGER,
         amount DECIMAL (8, 2),
+        date TIMESTAMPTZ,
 
         CONSTRAINT fk_transactions_orders
                 FOREIGN KEY (order_id)
@@ -1594,13 +1595,14 @@ BEGIN
         );
 
     INSERT INTO orders
-        (session_id, payment_provider_id, total_amount)
+        (id, shopping_cart_id, payment_provider_id, total_amount)
     VALUES
-        (provided_session_id, current_payment_provider_id, current_total_amount);
+        (provided_session_id, provided_session_id, current_payment_provider_id, current_total_amount);
 
     CALL sp_transfer_money(
-        provided_customer_id, 
-        provided_current_balance, 
+        provided_session_id,
+        provided_customer_id,
+        provided_current_balance,
         current_total_amount);
 END;
 $$
@@ -1610,6 +1612,7 @@ LANGUAGE plpgsql;
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_transfer_money(
+        in_session_id INTEGER,
         provided_customer_id INTEGER,
         available_balance DECIMAL(8, 2),
         needed_balance DECIMAL(8, 2)
@@ -1620,8 +1623,6 @@ DECLARE
     insufficient_balance CONSTANT TEXT :=
         ('Insufficient balance to complete the transaction. ' ||
          'Needed amount: %', needed_balance);
-
-    current_order_id INTEGER;
 BEGIN
     IF
         (available_balance - needed_balance) < 0
@@ -1638,27 +1639,12 @@ BEGIN
         WHERE
             id = provided_customer_id;
 
-        current_order_id :=(
-            SELECT
-                o.id
-            FROM
-                orders AS o
-            JOIN
-                sessions AS s
-            ON
-                o.session_id = s.id
-            WHERE
-                s.customer_id = provided_customer_id
-                        AND
-                o.is_completed = FALSE
-            );
-
             UPDATE
                 orders
             SET
                 is_completed = True
             WHERE
-                id = current_order_id;
+                id = in_session_id;
 
 
             INSERT INTO
@@ -1669,7 +1655,7 @@ BEGIN
                              )
             VALUES
                 (
-                 current_order_id,
+                 in_session_id,
                  needed_balance,
                  NOW()
                 );
@@ -1699,7 +1685,7 @@ CALL sp_complete_order(
 ##### 'transactions' table:
 <img width="675" alt="Screenshot 2023-10-21 at 17 56 31" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/efa007ce-c4f9-4b2b-9275-aefe637af88e">
 
-#### Finally we will create a few 'Views', to which the Superuser would be having an access to, so as to check <ins>of what type are the most sold jewelries and what is the total sum of transactions made to pay for those</ins>. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
+#### Finally we will create a 'Views', to which the Superuser would be having an access to, so as to check <ins>of what type are the most sold jewelry. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
 ```plpgsql
 SELECT fn_register_user('welch@email.com', '#6hhh', '#6hhh');
 CALL sp_add_to_shopping_cart(2, 2, 3);
