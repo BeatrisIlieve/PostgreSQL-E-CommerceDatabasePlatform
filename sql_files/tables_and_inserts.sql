@@ -119,3 +119,91 @@ INSERT INTO
     employees(staff_user_id, department_id, first_name, last_name, email, phone_number)
 VALUES
     (5, 20003, 'Elen', 'Williams', 'elen@ebay.com', '812-263-4473');
+
+CREATE TABLE
+    types(
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(30) NOT NULL
+);
+
+INSERT INTO
+    types(name)
+VALUES
+    ('Ring'),
+    ('Earring'),
+    ('Necklace'),
+    ('Bracelet');
+
+CREATE TABLE
+    jewelries(
+        id SERIAL PRIMARY KEY,
+        type_id INTEGER NOT NULL,
+        is_active BOOLEAN DEFAULT FALSE,
+        name VARCHAR(100) NOT NULL,
+        image_url VARCHAR(200) NOT NULL,
+        regular_price DECIMAL(7, 2) NOT NULL,
+        discount_price DECIMAL(7, 2),
+        metal_color VARCHAR(12) NOT NULL,
+        diamond_carat_weight VARCHAR(10) NOT NULL,
+        diamond_clarity VARCHAR(10) NOT NULL,
+        diamond_color VARCHAR(5) NOT NULL,
+        description TEXT NOT NULL,
+
+        CONSTRAINT fk_jewelries_types
+             FOREIGN KEY (type_id)
+             REFERENCES types(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE
+);
+
+CREATE TABLE
+    inventory(
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER,
+        session_id INTEGER,
+        jewelry_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT fk_inventory_employees
+             FOREIGN KEY (employee_id)
+             REFERENCES employees(id)
+             ON UPDATE CASCADE
+             ON DELETE SET NULL,
+
+        CONSTRAINT fk_inventory_jewelries
+                FOREIGN KEY (jewelry_id)
+                REFERENCES jewelries(id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
+);
+
+CREATE TABLE
+    inventory_records(
+        id SERIAL PRIMARY KEY,
+        inventory_id INTEGER NOT NULL,
+        operation VARCHAR(6) NOT NULL,
+        date TIMESTAMPTZ,
+
+        CONSTRAINT fk_inventory_records_inventory
+                     FOREIGN KEY (inventory_id)
+                     REFERENCES inventory(id)
+                     ON UPDATE CASCADE
+                     ON DELETE SET NULL
+);
+
+CREATE TABLE
+    discounts(
+        id SERIAL PRIMARY KEY,
+        last_modified_by_emp_id CHAR(5) NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        percentage DECIMAL(3,2) NOT NULL,
+        created_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT ck_discounts_percentage
+             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
+);
