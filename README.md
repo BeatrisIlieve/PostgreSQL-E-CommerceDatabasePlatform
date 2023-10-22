@@ -1,6 +1,7 @@
 # <p align="center">PostgreSQL-E-Commerce-Database-Platform</p>
 ## <p align="center">Entity Relationship Diagram:</p>
-![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/226774e6-ea63-46c2-9dbf-1cdee00cb014)
+![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9d4b8a74-1212-4bf7-8142-64e10ce16287)
+
 
 ### <p align="center">The current project represents a relational database management system designed to support the architecture of an online store specializing in diamond jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the code.</p> 
 
@@ -1777,10 +1778,10 @@ BEGIN
             );
     ELSIF (
         SELECT credentials_authentication(
-    provided_staff_user_role,
-    provided_staff_user_password,
-    provided_employee_id)
-        )IS TRUE
+            provided_staff_user_role,
+            provided_staff_user_password,
+            provided_employee_id)
+                )IS TRUE
     THEN
 
         RETURN QUERY
