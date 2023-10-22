@@ -1685,7 +1685,7 @@ CALL sp_complete_order(
 ##### 'transactions' table:
 <img width="675" alt="Screenshot 2023-10-21 at 17 56 31" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/efa007ce-c4f9-4b2b-9275-aefe637af88e">
 
-#### Finally we will create a 'Views', to which the Superuser would be having an access to, so as to check <ins>of what type are the most sold jewelry. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
+#### Finally we will create a function, which the Superuser would be able to call via their credentials, so as to check <ins>of what type are the most sold jewelry</ins>. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
 ```plpgsql
 SELECT fn_register_user('welch@email.com', '#6hhh', '#6hhh');
 CALL sp_add_to_shopping_cart(2, 2, 3);
@@ -1743,5 +1743,92 @@ CALL sp_complete_order(
 
 ##### 'transactions' table:
 <img width="682" alt="Screenshot 2023-10-21 at 19 55 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9d60dff1-cf11-41b1-acaf-d06b8e71e673">
+
+#### We can use now 'fn_show_most_sold_jewelry_type' to check the type of the most sold item in the store and the sold quantity of it: 
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_show_most_sold_jewelry_type(
+        provided_employee_id CHAR(5),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(30)
+)
+RETURNS TABLE(
+            type VARCHAR(10),
+            quantity BIGINT
+        )
+AS
+$$
+DECLARE
+    access_denied CONSTANT TEXT :=
+        'Access Denied: ' ||
+        'You do not have the required authorization to perform actions into this department.';
+
+    authorisation_failed CONSTANT TEXT :=
+        'Authorization failed: Incorrect password';
+BEGIN
+    IF NOT (
+        SELECT fn_role_authentication(
+                    'super', provided_employee_id
+                )
+        )
+    THEN
+        SELECT fn_raise_error_message(
+            access_denied
+            );
+    ELSIF (
+        SELECT credentials_authentication(
+    provided_staff_user_role,
+    provided_staff_user_password,
+    provided_employee_id)
+        )IS TRUE
+    THEN
+
+        RETURN QUERY
+        SELECT
+            jewelry_type,
+            MAX(sold_quantity)
+        FROM (
+            SELECT
+                t.name AS jewelry_type,
+                SUM(sc.quantity) AS sold_quantity
+            FROM
+                shopping_cart AS sc
+            JOIN
+                jewelries AS j
+            ON
+                sc.jewelry_id = j.id
+            JOIN
+                types AS t
+            ON
+                j.type_id = t.id
+            GROUP BY
+                t.name
+             ) AS favourite_item
+        GROUP BY
+            jewelry_type
+        ORDER BY
+            MAX(sold_quantity) DESC
+        LIMIT 1;
+    ELSE
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
+##### This is how the 'sjopping_cart' table looks like at the moment:
+<img width="551" alt="Screenshot 2023-10-22 at 19 06 06" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ec7e5d94-2cac-4d12-8d17-c5a39fcf4e9f">
+
+#### So if we select the 'fn_show_most_sold_jewelry_type':
+```plpgsql
+SELECT fn_show_most_sold_jewelry_type(
+    '10001',
+    'super_staff_user',
+    'super_staff_user_password');
+```
+##### We get the resulting table (because the jewelry with ID 2 is of type 'Earring'):
+<img width="396" alt="Screenshot 2023-10-22 at 19 07 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6e7e131e-9d4c-4709-8095-a01feedbe470">
 
 
