@@ -1832,4 +1832,4 @@ SELECT fn_show_most_sold_jewelry_type(
 ##### We get the resulting table (because the jewelry with ID 2 is of type 'Earring'):
 <img width="396" alt="Screenshot 2023-10-22 at 19 07 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6e7e131e-9d4c-4709-8095-a01feedbe470">
 
-
+#### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](random_sentence_generator.py)
