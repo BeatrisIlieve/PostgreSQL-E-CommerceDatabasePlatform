@@ -1,6 +1,6 @@
 # <p align="center">*PostgreSQL-E-Commerce-Database-Platform*</p>
 ## <p align="center">*Entity Relationship Diagram:*</p>
-![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/139eae4b-8af3-47f1-9222-cd15edd5c63c)
+![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/21b9e381-9acf-4ef7-92e7-816de956a3ff)
 ### <p align="center">*The current project represents a relational database management system designed to support the architecture of an online store specializing in diamonds and gold jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the script.*</p> 
 
 #### We have used the <ins>SHA-256</ins> hash encription for storing customer users passwords in the database:
