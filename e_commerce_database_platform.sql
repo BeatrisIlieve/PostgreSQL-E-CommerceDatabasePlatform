@@ -1142,6 +1142,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         name VARCHAR(100)
 );
+
 INSERT INTO
     jewelry_name(
         name
@@ -1228,6 +1229,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         clarity VARCHAR(15)
 );
+
 INSERT INTO
     diamond_clarity(
         clarity
@@ -1569,7 +1571,6 @@ CALL sp_insert_jewelry_into_jewelries(
     3,
     2
 );
-
 
 CALL sp_insert_jewelry_into_jewelries(
     'merchandising_staff_user_second',
@@ -2076,10 +2077,21 @@ CREATE TABLE payment_providers(
     name VARCHAR(100) NOT NULL
 );
 
-INSERT INTO payment_providers (name) VALUES
-    ('PayPal'),
-    ('Amazon Pay'),
-    ('Stripe');
+INSERT INTO
+    payment_providers
+    (
+    name
+    )
+VALUES
+    (
+     'PayPal'
+     ),
+    (
+     'Amazon Pay'
+     ),
+    (
+     'Stripe'
+     );
 
 CREATE TABLE
     orders(
@@ -2814,7 +2826,6 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-
 SELECT fn_register_user('welch@email.com', '#6hhh', '#6hhh');
 CALL sp_add_to_shopping_cart(3, 1, 2);
 CALL sp_complete_order(
@@ -2842,7 +2853,6 @@ CALL sp_complete_order(
     200000.00,
     'PayPal'
 );
-
 
 SELECT fn_register_user('flora@email.com', '#6hhh', '#6hhh');
 CALL sp_add_to_shopping_cart(5, 11, 3);
@@ -3039,9 +3049,6 @@ CALL sp_complete_order(
     200000.00,
     'Amazon Pay'
 );
-
-
-
 
 CREATE OR REPLACE FUNCTION
     fn_best_selling_to_most_buying_country_via_best_provider(
