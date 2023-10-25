@@ -1522,9 +1522,6 @@ CALL sp_insert_jewelry_into_jewelries(
     1
 );
 
-
-
-
 CALL sp_insert_jewelry_into_jewelries(
     'merchandising_staff_user_second',
     'merchandising_password_second',
@@ -3150,7 +3147,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION
     fn_find_country_by_id(in_country_id INTEGER)
