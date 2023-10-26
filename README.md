@@ -20,7 +20,7 @@ CREATE TABLE
         created_at DATE NOT NULL
 );
 ```
-#### We have created tables `countries`, `cities` and `countries_cities` so when customers order a product they provide an address for delivery:
+#### We have established `countries`, `cities` and `countries_cities` tables to collect customers delivery addresses when they place orders.:
 ```plpgsql
 CREATE TABLE countries(
     id SERIAL PRIMARY KEY,
