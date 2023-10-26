@@ -2,6 +2,7 @@ INSERT INTO
     gold_color(
         color
 )
+
 VALUES
     (
     'ROSE GOLD'
