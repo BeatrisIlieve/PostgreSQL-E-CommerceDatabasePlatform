@@ -1,5 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE TABLE
+    customer_users(
+        id SERIAL PRIMARY KEY NOT NULL,
+        email VARCHAR(30) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        created_at DATE NOT NULL
+);
+
 CREATE TABLE countries(
     id SERIAL PRIMARY KEY,
     name VARCHAR(30) UNIQUE NOT NULL
@@ -811,14 +819,6 @@ VALUES
      43, 105
      )
 ;
-
-CREATE TABLE
-    customer_users(
-        id SERIAL PRIMARY KEY NOT NULL,
-        email VARCHAR(30) UNIQUE NOT NULL,
-        password VARCHAR(100) NOT NULL,
-        created_at DATE NOT NULL
-);
 
 CREATE TABLE
     customer_details(
