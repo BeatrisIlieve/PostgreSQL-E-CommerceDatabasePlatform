@@ -33,12 +33,6 @@ CREATE TABLE countries(
 
 <img width="296" alt="Screenshot 2023-10-26 at 18 46 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/942eada8-5381-4dfb-9d00-911eedaf2489">
 
-
-
-
-
-
-
 ```plpgsql
 CREATE TABLE cities(
     id SERIAL PRIMARY KEY,
@@ -46,6 +40,11 @@ CREATE TABLE cities(
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_cities.sql)
+
+<img width="269" alt="Screenshot 2023-10-26 at 18 50 40" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f4417d2b-36e3-4599-b796-335d9106caf7">
+
+<img width="254" alt="Screenshot 2023-10-26 at 18 54 08" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fbe80832-d4aa-4796-8adb-22eb5db8a0aa">
+
 ```plpgsql
 CREATE TABLE
     countries_cities(
@@ -67,6 +66,12 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_countries_cities.sql)
+
+<img width="372" alt="Screenshot 2023-10-26 at 18 56 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7516b286-c0be-4ce3-91f2-72d3c277342f">
+
+<img width="379" alt="Screenshot 2023-10-26 at 18 59 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/8b6b4fd1-d7bd-416f-9ab5-e000a4420a2d">
+
+
 #### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
 ```plpgsql
 CREATE TABLE
