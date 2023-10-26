@@ -28,6 +28,8 @@ CREATE TABLE countries(
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_countries.sql)
+<a href="https://example.com" target="_blank">Visit Website</a>
+
 
 <img width="315" alt="Screenshot 2023-10-26 at 18 37 10" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/25d0c7bc-f0e8-43d8-8ce5-1558a8f10ca5">
 
