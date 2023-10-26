@@ -15,6 +15,7 @@ VALUES
      'beatris@icloud.com',
      '000-000-000'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -33,6 +34,7 @@ VALUES
      'taldersley0@army.mil',
      '198-393-2278'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -51,6 +53,7 @@ VALUES
      'r@obrey.net',
      '631-969-8114'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -69,6 +72,7 @@ VALUES
      'mcaltera4@cpanel.net',
      '515-969-8114'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
