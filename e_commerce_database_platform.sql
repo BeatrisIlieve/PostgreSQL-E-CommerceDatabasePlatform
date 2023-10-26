@@ -809,7 +809,8 @@ VALUES
      ),
     (
      43, 105
-     );
+     )
+;
 
 CREATE TABLE
     customer_users(
@@ -835,7 +836,13 @@ CREATE TABLE
                      FOREIGN KEY (customer_user_id)
                      REFERENCES customer_users(id)
                      ON UPDATE CASCADE
-                     ON DELETE CASCADE
+                     ON DELETE CASCADE,
+
+        CONSTRAINT fk_customer_details_countries_cities
+                    FOREIGN KEY (countries_cities_id)
+                    REFERENCES countries_cities(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
 );
 
 CREATE OR REPLACE FUNCTION
