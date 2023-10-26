@@ -4,7 +4,7 @@
 
 ![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7e4ffa06-b93e-49e8-8807-91a844bba80e)
 
-### <p align="center">*In this document, we provide explanations and examples for every part of the script. For improved organization, we have segmented the functionality related to data insertion into distinct files and provided links to them.*</p> 
+### <p align="center">*In this document, we provide explanations and examples for every part of the script. For improved organization, we have segmented the functionality related to data insertion into distinct files and provided links to them. For the best experience, it's recommended to open these links in a new tab by right-clicking and selecting 'Open link in new tab' (or your browser's equivalent option).*</p> 
 
 #### We have used the <ins>SHA-256</ins> hash encription for storing customer users passwords in the database:
 ```plpgsql
@@ -28,8 +28,6 @@ CREATE TABLE countries(
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_countries.sql)
-<a href="https://example.com" target="_blank">Visit Website</a>
-
 
 <img width="315" alt="Screenshot 2023-10-26 at 18 37 10" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/25d0c7bc-f0e8-43d8-8ce5-1558a8f10ca5">
 
