@@ -11,19 +11,17 @@
 ```plpgsql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ```
-#### Customer accounts are seperated into two tables related through" Foreign Key - one for their login details - <ins>Email and Password</ins>:
+#### Customer accounts are seperated into two tables related through Foreign Key. The first one stores their login credentials - <ins>Email and Password</ins>:
 ```plpgsql
 CREATE TABLE
     customer_users(
         id SERIAL PRIMARY KEY NOT NULL,
         email VARCHAR(30) UNIQUE NOT NULL,
         password VARCHAR(100) NOT NULL,
-        created_at DATE NOT NULL,
-        updated_at DATE,
-        deleted_at DATE
+        created_at DATE NOT NULL
 );
 ```
-#### And another one for their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
+#### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
 ```plpgsql
 CREATE TABLE
     customer_details(
