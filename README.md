@@ -1,11 +1,10 @@
 # <p align="center">*PostgreSQL-E-Commerce-Database-Platform*</p>
+### <p align="center">*The current project represents a relational database management system designed to support the architecture of an online store specializing in diamonds and gold jewelry. However, we believe it can be applied to a wide range of business ideas.*</p> 
 ## <p align="center">*Entity Relationship Diagram:*</p>
 
 ![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7e4ffa06-b93e-49e8-8807-91a844bba80e)
 
-
-
-### <p align="center">*The current project represents a relational database management system designed to support the architecture of an online store specializing in diamonds and gold jewelry. However, we believe it can be applied to a wide range of business ideas. In this document, we provide explanations and examples for every part of the script.*</p> 
+### <p align="center">*In this document, we provide explanations and examples for every part of the script. For improved organization, we have segmented the functionality related to data insertion into distinct files and provided links to them.*</p> 
 
 #### We have used the <ins>SHA-256</ins> hash encription for storing customer users passwords in the database:
 ```plpgsql
@@ -19,6 +18,13 @@ CREATE TABLE
         email VARCHAR(30) UNIQUE NOT NULL,
         password VARCHAR(100) NOT NULL,
         created_at DATE NOT NULL
+);
+```
+#### We have created tables `countries`, `cities` and `countries_cities` so when customers order a product they provide an address for delivery:
+```plpgsql
+CREATE TABLE countries(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
 #### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
