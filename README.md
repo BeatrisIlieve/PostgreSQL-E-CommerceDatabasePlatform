@@ -20,14 +20,53 @@ CREATE TABLE
         created_at DATE NOT NULL
 );
 ```
-#### We have established `countries`, `cities` and `countries_cities` tables to collect customers delivery addresses when they place orders.:
+#### We have established tables `countries` and `cities`, to store the names of the most European countries and their corresponding biggest cities. The `countries_cities` table serves as a mapper, and it is instrumental in collecting customer delivery addresses when orders are placed:
 ```plpgsql
 CREATE TABLE countries(
     id SERIAL PRIMARY KEY,
     name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
-[Link to Insert Values File](insert_files/insert_into_countries.sql)
+[Link to Insert Values File](insert_values_files/insert_into_countries.sql)
+
+<img width="315" alt="Screenshot 2023-10-26 at 18 37 10" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/25d0c7bc-f0e8-43d8-8ce5-1558a8f10ca5">
+
+<img width="296" alt="Screenshot 2023-10-26 at 18 46 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/942eada8-5381-4dfb-9d00-911eedaf2489">
+
+
+
+
+
+
+
+```plpgsql
+CREATE TABLE cities(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(30) UNIQUE  NOT NULL
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_cities.sql)
+```plpgsql
+CREATE TABLE
+    countries_cities(
+        id SERIAL PRIMARY KEY,
+        country_id INTEGER NOT NULL,
+        city_id INTEGER NOT NULL,
+
+        CONSTRAINT fk_countries_cities_countries
+                    FOREIGN KEY (country_id)
+                    REFERENCES countries(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+
+        CONSTRAINT fk_countries_cities_cities
+                    FOREIGN KEY (city_id)
+                    REFERENCES cities(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_countries_cities.sql)
 #### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
 ```plpgsql
 CREATE TABLE
