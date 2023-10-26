@@ -27,11 +27,50 @@ CREATE TABLE countries(
     name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
+#### To showcase the data inserted into the `countries` table, we have used the following SQL query as we will do later on:
+
+```plpgsql
+SELECT 
+    *
+FROM
+    countries
+WHERE 
+    id >= 1 AND id <= 3
+UNION
+SELECT 
+    *
+FROM 
+    countries
+WHERE 
+    id >= 10 AND id <= 13
+UNION
+SELECT 
+    *
+FROM 
+    countries
+WHERE 
+    id >= 20 AND id <= 23
+UNION
+SELECT 
+    *
+FROM 
+    countries
+WHERE 
+    id >= 30 AND id <= 33
+UNION
+SELECT 
+    *
+FROM 
+    countries
+WHERE 
+    id >= 40 AND id <= 43
+ORDER BY 
+    id;
+```
+
 [Link to Insert Values File](insert_values_files/insert_into_countries.sql)
 
-<img width="315" alt="Screenshot 2023-10-26 at 18 37 10" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/25d0c7bc-f0e8-43d8-8ce5-1558a8f10ca5">
-
-<img width="296" alt="Screenshot 2023-10-26 at 18 46 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/942eada8-5381-4dfb-9d00-911eedaf2489">
+<img width="241" alt="Screenshot 2023-10-26 at 22 52 20" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/4bf867a4-8b2a-4228-afcd-502b3e245d01">
 
 ```plpgsql
 CREATE TABLE cities(
