@@ -27,6 +27,7 @@ CREATE TABLE countries(
     name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
+[Link to Insert Values File](insert_files/insert_into_countries.sql)
 #### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
 ```plpgsql
 CREATE TABLE
