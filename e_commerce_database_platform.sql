@@ -1114,6 +1114,7 @@ VALUES
     (
      'Supervisory'
      );
+
 INSERT INTO
     departments(
                 name
@@ -1122,6 +1123,7 @@ VALUES
     (
      'Merchandising'
      );
+
 INSERT INTO
     departments(
                 name
@@ -1173,6 +1175,7 @@ VALUES
      'beatris@icloud.com',
      '000-000-000'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -1191,6 +1194,7 @@ VALUES
      'taldersley0@army.mil',
      '198-393-2278'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -1209,6 +1213,7 @@ VALUES
      'r@obrey.net',
      '631-969-8114'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -1227,6 +1232,7 @@ VALUES
      'mcaltera4@cpanel.net',
      '515-969-8114'
      );
+
 INSERT INTO
     employees(
               staff_user_id,
@@ -1357,6 +1363,7 @@ INSERT INTO
     jewelry_name(
         name
 )
+
 VALUES
     (
     'BUDDING ROUND BRILLIANT DIAMOND HALO ENGAGEMENT RING'
@@ -1381,6 +1388,7 @@ INSERT INTO
     gold_color(
         color
 )
+
 VALUES
     (
     'ROSE GOLD'
@@ -1402,6 +1410,7 @@ INSERT INTO
     diamond_color(
             color
 )
+
 VALUES
     (
      'D'
@@ -1423,6 +1432,7 @@ INSERT INTO
     diamond_carat_weight(
             weight
 )
+
 VALUES
     (
      '3.00ctw'
@@ -1444,6 +1454,7 @@ INSERT INTO
     diamond_clarity(
         clarity
 )
+
 VALUES
     (
      'FL'
@@ -1465,6 +1476,7 @@ INSERT INTO
     description(
         description
 )
+
 VALUES
     (
      'This stunning engagement ring features a round brilliant diamond with surrounded by a sparkling halo of marquise diamonds. Crafted to the highest standards and ethically sourced, it is the perfect ring to dazzle for any gift, proposal, or occasion. Its timeless design and exquisite craftsmanship will ensure an everlasting memory.'
