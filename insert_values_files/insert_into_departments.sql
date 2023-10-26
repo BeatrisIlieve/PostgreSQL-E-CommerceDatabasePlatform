@@ -1,7 +1,8 @@
 INSERT INTO
     departments(
                 name
-                )
+    )
+
 VALUES
     (
      'Supervisory'
@@ -10,7 +11,8 @@ VALUES
 INSERT INTO
     departments(
                 name
-                )
+        )
+        
 VALUES
     (
      'Merchandising'
@@ -19,7 +21,8 @@ VALUES
 INSERT INTO
     departments(
                 name
-                )
+        )
+
 VALUES
     (
      'Inventory'

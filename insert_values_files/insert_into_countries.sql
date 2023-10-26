@@ -2,6 +2,7 @@ INSERT INTO
     countries(
         name
 )
+
 VALUES
     (
      'Albania'
