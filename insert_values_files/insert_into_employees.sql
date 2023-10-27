@@ -4,7 +4,8 @@ INSERT INTO
               department_id,
               first_name,
               last_name, email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -13,7 +14,8 @@ VALUES
      'Beatris',
      'Ilieve',
      'beatris@icloud.com',
-     '000-000-000'
+     '000-000-000',
+     NOW()
      );
 
 INSERT INTO
@@ -23,7 +25,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -32,7 +35,8 @@ VALUES
      'Terri',
      'Aldersley',
      'taldersley0@army.mil',
-     '198-393-2278'
+     '198-393-2278',
+     NOW()
      );
 
 INSERT INTO
@@ -42,7 +46,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -51,7 +56,8 @@ VALUES
      'Rose',
      'Obrey',
      'r@obrey.net',
-     '631-969-8114'
+     '631-969-8114',
+     NOW()
      );
 
 INSERT INTO
@@ -61,7 +67,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -70,7 +77,8 @@ VALUES
      'Mariette',
      'Caltera',
      'mcaltera4@cpanel.net',
-     '515-969-8114'
+     '515-969-8114',
+     NOW()
      );
 
 INSERT INTO
@@ -80,7 +88,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -89,5 +98,6 @@ VALUES
      'Elen',
      'Williams',
      'elen@ebay.com',
-     '812-263-4473'
+     '812-263-4473',
+     NOW()
      );
