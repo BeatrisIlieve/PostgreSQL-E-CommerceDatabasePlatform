@@ -1545,22 +1545,6 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         order_id INTEGER,
         amount DECIMAL (8, 2),
-
-        CONSTRAINT fk_transactions_orders
-                FOREIGN KEY (order_id)
-                REFERENCES orders(id)
-                ON UPDATE RESTRICT
-                ON DELETE RESTRICT
-);
-```
-
-#### The final steps are to complete the order and store information about the money transaction. Firstly, we need to create a `transactions' table:
-```plpgsql
-CREATE TABLE
-    transactions(
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER,
-        amount DECIMAL (8, 2),
         date TIMESTAMPTZ,
 
         CONSTRAINT fk_transactions_orders
@@ -1570,7 +1554,56 @@ CREATE TABLE
                 ON DELETE RESTRICT
 );
 ```
-#### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details, and most importantly - available balance, so we can check if the transfer could be procedeed. After the 'sp_complete_order' procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the 'sp_transfer_money' procedure:
+#### Before proceeding, we need two functions that locate the `countries_cities` table ID according to the names of the city and country the customer has provided:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_find_country_by_name(
+        in_country_name VARCHAR(30)
+)
+RETURNS INTEGER
+AS
+$$
+DECLARE
+    country_id INTEGER;
+BEGIN
+    country_id := (
+        SELECT
+            cou.id
+        FROM
+            countries AS cou
+        WHERE
+            cou.name = in_country_name
+    );
+    RETURN country_id;
+END;
+$$
+LANGUAGE plpgsql;
+```
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_find_city_by_name(
+        in_city_name VARCHAR(30)
+)
+RETURNS INTEGER
+AS
+$$
+DECLARE
+    city_id INTEGER;
+BEGIN
+    city_id := (
+        SELECT
+            cit.id
+        FROM
+            cities AS cit
+        WHERE
+            cit.name = in_city_name
+    );
+    RETURN city_id;
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details and available balance, so we can check if the transfer could be procedeed. After the `sp_complete_order` procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the 'sp_transfer_money' procedure:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_complete_order(
@@ -1578,6 +1611,9 @@ CREATE OR REPLACE PROCEDURE
         provided_first_name VARCHAR(30),
         provided_last_name VARCHAR(30),
         provided_phone_number VARCHAR(20),
+        provided_country_name VARCHAR(30),
+        provided_city_name VARCHAR(30),
+        provided_address VARCHAR(200),
         provided_current_balance DECIMAL(8, 2),
         provided_payment_provider VARCHAR(100)
 )
@@ -1593,13 +1629,19 @@ DECLARE
     provided_customer_id INTEGER;
 
     current_payment_provider_id INTEGER;
+
+    current_country_id INTEGER;
+
+    current_city_id INTEGER;
+
+    current_cities_countries_id INTEGER;
 BEGIN
     IF
         provided_payment_provider NOT IN (
-        SELECT
-            name
-        FROM
-            payment_providers
+            SELECT
+                name
+            FROM
+                payment_providers
         )
     THEN
         SELECT fn_raise_error_message(provider_not_supported);
@@ -1631,12 +1673,37 @@ BEGIN
                 s.id = provided_session_id
             );
 
+    current_country_id := (
+        SELECT fn_find_country_by_name(
+                provided_country_name
+            )
+        );
+
+    current_city_id := (
+    SELECT fn_find_city_by_name(
+            provided_city_name
+        )
+        );
+
+    current_cities_countries_id := (
+        SELECT
+            id
+        FROM
+            countries_cities
+        WHERE
+            country_id = current_country_id
+                    AND
+            city_id = current_city_id
+            );
+
     UPDATE
         customer_details
     SET
         first_name = provided_first_name,
         last_name = provided_last_name,
         phone_number = provided_phone_number,
+        countries_cities_id = current_cities_countries_id,
+        address = provided_address,
         current_balance = provided_current_balance,
         payment_provider = provided_payment_provider
     WHERE
@@ -1644,16 +1711,24 @@ BEGIN
 
     current_total_amount := (
         SELECT
-            SUM((CASE
-                WHEN j.discount_price IS NULL THEN j.regular_price
-                ELSE j.discount_price
-            END) * sc.quantity)
+            SUM(
+                (CASE
+                    WHEN j.discount_price IS NULL
+                        THEN j.regular_price
+                    ELSE j.discount_price
+                END) * sc.quantity)
         FROM
             jewelries AS j
         JOIN
+            inventory AS i
+        ON
+            j.id = i.jewelry_id
+                AND
+            j.gold_color_id = i.color_id
+        JOIN
             shopping_cart AS sc
         ON
-            j.id = sc.jewelry_id
+            i.id = sc.inventory_id
         JOIN
             sessions AS s
         ON
@@ -1663,9 +1738,19 @@ BEGIN
         );
 
     INSERT INTO orders
-        (id, shopping_cart_id, payment_provider_id, total_amount)
+        (
+         id,
+         shopping_cart_id,
+         payment_provider_id,
+         date
+         )
     VALUES
-        (provided_session_id, provided_session_id, current_payment_provider_id, current_total_amount);
+        (
+         provided_session_id,
+         provided_session_id,
+         current_payment_provider_id,
+         NOW()
+         );
 
     CALL sp_transfer_money(
         provided_session_id,
