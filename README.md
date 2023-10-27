@@ -2062,5 +2062,136 @@ LANGUAGE plpgsql;
 
 <img width="1134" alt="Screenshot 2023-10-27 at 17 15 47" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/dc9c334e-5602-4963-8e92-e587040ee5d2">
 
+#### Now, we will need a function to find a country by name, which will be used in a while:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_find_country_by_id(in_country_id INTEGER)
+RETURNS VARCHAR(30)
+AS
+$$
+BEGIN
+    RETURN (
+        SELECT
+            cou.name
+        FROM
+            countries AS cou
+        JOIN
+            countries_cities AS cc
+        ON
+            cou.id = cc.country_id
+        WHERE
+            cc.id = in_country_id
+        );
+END;
+$$
+LANGUAGE plpgsql;
+```
+#### At the very end, we have created a function that finds which is the country that orders the most, what is the most preferred payment provider, and what is the total ordered quantity:
+```plpgsql
+CREATE OR REPLACE FUNCTION
+    fn_best_selling_to_most_buying_country_via_best_provider(
+        provided_employee_id CHAR(5),
+        provided_staff_user_role VARCHAR(30),
+        provided_staff_user_password VARCHAR(30)
+)
+RETURNS TABLE(
+            type VARCHAR(10),
+            color VARCHAR(15),
+            quantity BIGINT,
+            provider VARCHAR(30),
+            country VARCHAR(30)
+        )
+AS
+$$
+DECLARE
+    access_denied CONSTANT TEXT :=
+        'Access Denied: ' ||
+        'You do not have the required authorization to perform actions into this department.';
+
+    authorisation_failed CONSTANT TEXT :=
+        'Authorization failed: Incorrect password';
+BEGIN
+    IF NOT (
+        SELECT fn_role_authentication(
+                    'super', provided_employee_id
+                )
+        )
+    THEN
+        SELECT fn_raise_error_message(
+            access_denied
+            );
+    ELSIF NOT (
+        SELECT credentials_authentication(
+        provided_staff_user_role,
+        provided_staff_user_password,
+        provided_employee_id)
+        )
+    THEN
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    ELSE
+        RETURN QUERY
+        SELECT
+            jt.name AS jewelry_type,
+            gc.color as jewelry_color,
+            SUM(sc.quantity) AS sold_quantity,
+            (SELECT fn_find_country_by_id(
+                cd.countries_cities_id)
+             ) as country_name,
+            pp.name AS payment_provider_name
+        FROM
+            shopping_cart AS sc
+        JOIN
+            inventory AS i
+        ON
+            sc.inventory_id = i.id
+        JOIN
+            jewelries AS j
+        ON
+            i.jewelry_id = j.id
+                AND
+            i.color_id = j.gold_color_id
+        JOIN
+            jewelry_type AS jt
+        ON
+            j.type_id = jt.id
+        JOIN
+            gold_color AS gc
+        ON
+            j.gold_color_id = gc.id
+        JOIN
+            sessions AS s
+        ON
+            sc.session_id = s.id
+        JOIN
+            customer_users AS cu
+        ON
+            s.customer_id = cu.id
+        JOIN
+            customer_details AS cd
+        ON
+            cu.id = cd.customer_user_id
+        JOIN
+            orders AS o
+        ON
+            sc.id = o.shopping_cart_id
+        JOIN
+            payment_providers AS pp
+        ON
+            o.payment_provider_id = pp.id
+        GROUP BY
+            jewelry_type,
+            jewelry_color,
+            payment_provider_name,
+            country_name
+        ORDER BY
+            sold_quantity DESC
+        LIMIT 1;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
 
 #### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](e_commerce_database_platform.sql)
