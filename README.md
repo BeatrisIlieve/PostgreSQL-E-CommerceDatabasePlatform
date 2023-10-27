@@ -895,46 +895,17 @@ LANGUAGE plpgsql;
 
 <img width="1378" alt="Screenshot 2023-10-27 at 13 09 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08d47d82-4f66-4c07-8c7c-27737ec3fa98">
 
-##### From the tables above, we can see that every employee ID is retated to a 'staff_users' table with his/her credentials. So if we enter correct credentials but they do NOT correspond to employee ID (10004 that is related to the 'Inventory' and not Merchandising) passed to the 'sp_insert_jewelry_into_jewelries' procedure, we will get the following error message:
-<img width="727" alt="Screenshot 2023-10-20 at 13 30 15" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ed92c365-48b9-4e56-90f9-3a749c6b9055">
+##### From the tables above, we can see that every employee ID is retated to a 'staff_users' table with his/her credentials. So if we enter correct credentials but they do NOT correspond to employee ID (10004 that is related to the 'Inventory' and not Merchandising) passed to the `sp_insert_jewelry_into_jewelries` procedure, we will get the following error message:
 
-##### Let us insert an earring into the 'jelelries' table using correct credentions, correct ID, meaning that it belongs to the devoted department, however the ID is assigned to another employee:
-```plpgsql
-CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_staff_user_second',
-    'merchandising_password_second',
-    '10002',
-    2,
-    'ALMOST A HALO ROUND DIAMOND STUD EARRING',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351117/Rings/ALMOST_A_HALO_ROUND_DIAMOND_STUD_EARRING_giloj0.webp',
-    3749.00,
-    'ROSE GOLD',
-    '1.11ctw',
-    'SI1-SI2',
-    'G-H',
-    'This Almost A Halo Round Diamond Stud Earring is the perfect choice for any occasion. It features an 0.60cttw round diamonds set in a half halo design, creating a unique and timeless look. Crafted from the finest materials, this earring is sure to be an eye-catching addition to any collection.'
-);
-```
-<img width="1005" alt="Screenshot 2023-10-20 at 13 46 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/988c88a8-1168-4e7a-b42b-af45d6c01101">
+<img width="1135" alt="Screenshot 2023-10-27 at 13 19 50" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/841ec100-01f9-46ba-8f2c-49e10817adea">
+
+##### If we use correct credentials, correct ID, meaning that it belongs to the devoted department, however the ID is assigned to another employee:
+
+<img width="1135" alt="Screenshot 2023-10-27 at 13 22 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ada2e432-684d-489e-a813-12078346c1b8">
 
 ##### Wrong password or username:
-```plpgsql
-CALL sp_insert_jewelry_into_jewelries(
-    '_staff_user_first',
-    'merchandising_password_first',
-    '10002',
-    3,
-    'DROP HALO PENDANT NECKLACE',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351447/Rings/DROP_HALO_PENDANT_NECKLACE_u811d4.webp',
-    17999.00,
-    'ROSE GOLD',
-    '1.11ctw',
-    'SI1-SI2',
-    'G-H',
-    'This Drop Halo Pendant Necklace is a true statement piece. Crafted with a luxurious drop design, it combines stylish elegance with sophisticated charm. Its brilliant gold plating adds timeless sophistication and shine to any outfit. Refined and timeless, this necklace will ensure you stand out in any crowd.'
-);
-```
-<img width="1001" alt="Screenshot 2023-10-20 at 13 48 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d0cf29e0-78e0-44b4-8d1c-73e0edf859ae">
+
+<img width="1132" alt="Screenshot 2023-10-27 at 13 25 32" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9b3724ff-d37b-4aec-88ca-bec4ea2b2b52">
 
 ##### Correct input ('sp_insert_jewelry_into_jewelries' should be executed after 'trigger_fn_insert_new_entity_into_inventory_records_on_create', presented down below, has been created in order to observe the correct flow of the demo):
 ```plpgsql
