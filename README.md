@@ -2030,25 +2030,13 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### Let us complete the order:
-```plpgsql
-CALL sp_complete_order(
-    1,
-    'Beatris',
-    'Ilieve',
-    '000000000',
-    100000.00,
-    'PayPal'
-);
-```
-##### 'customer_details' table:
-<img width="1017" alt="Screenshot 2023-10-21 at 17 55 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a29b6b5f-6b0a-4ea7-8a12-5412e9c33747">
+##### If we try to spend bigger amount that we have available in our balance:
 
-##### 'orders' table:
-<img width="839" alt="Screenshot 2023-10-21 at 17 56 02" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6a74168a-d834-4488-a279-76bcf00852ad">
+<img width="598" alt="Screenshot 2023-10-27 at 16 53 47" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/dd1c3b34-37e1-4e1a-b41c-3a72b6b901a6">
 
-##### 'transactions' table:
-<img width="675" alt="Screenshot 2023-10-21 at 17 56 31" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/efa007ce-c4f9-4b2b-9275-aefe637af88e">
+#### Let us add more customers and complete more orders, so we can see the final result better:
+
+
 
 #### Finally we will create a function, which the Superuser would be able to call via their credentials, so as to check <ins>of what type are the most sold jewelry</ins>. To create a better image, it would be good to register a few customers, add to their shopping carts, and complete orders:
 ```plpgsql
