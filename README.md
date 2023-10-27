@@ -1345,7 +1345,7 @@ LANGUAGE plpgsql;
 
 <img width="574" alt="Screenshot 2023-10-27 at 16 05 49" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/0d7d03b5-a20c-4108-9ad1-affa856bfb2c">
 
-##### `inventory' table:
+##### `inventory` table:
 <img width="1408" alt="Screenshot 2023-10-27 at 16 08 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/204d38e1-4cc7-4060-9de1-346834a33f9a">
 
 #### Afterwards, another procedure is being called that reduces the quantities in the `inventories` table (also sets the `deleted_at` field if the quantity reaches 0 as we saw above):
