@@ -768,22 +768,7 @@ CREATE TABLE
              ON DELETE SET NULL
 );
 ```
-#### Similiarly to 'inventory' the 'discounts' table shows the percentage, the jewelry ID and the ID of the employee who inserted it:
-```plpgsql
-CREATE TABLE
-    discounts(
-        id SERIAL PRIMARY KEY,
-        last_modified_by_emp_id CHAR(5) NOT NULL,
-        jewelry_id INTEGER NOT NULL,
-        percentage DECIMAL(3,2) NOT NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ,
 
-        CONSTRAINT ck_discounts_percentage
-             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
-);
-```
 #### The next procedure is responsible for inserting items into the `jewelries` table after authenticating a staff user belonging to the 'Merchandising' department. It also adds the item to the `inventory` table, with default quantity of 0 as well as the ID of the employee:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
@@ -981,7 +966,27 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+
+[Link to Insert Values File](insert_values_files/insert_into_inventory.sql)
+
 <img width="1387" alt="Screenshot 2023-10-27 at 13 45 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/cf5ad6f9-7541-4e62-be7b-0fbea6d10593">
+
+#### Similiarly to `inventory` the `discounts` table, stores the jewelry ID, the ID of the employee who inserted it and of course the percentage:
+```plpgsql
+CREATE TABLE
+    discounts(
+        id SERIAL PRIMARY KEY,
+        last_modified_by_emp_id CHAR(5) NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        percentage DECIMAL(3,2) NOT NULL,
+        created_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT ck_discounts_percentage
+             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
+);
+```
 
 #### We are able to insert discount percetanges using the procedure in the subsequent section:
 ```plpgsql
@@ -991,6 +996,7 @@ CREATE OR REPLACE PROCEDURE
         provided_staff_user_password VARCHAR(9),
         provided_last_modified_by_emp_id CHAR(5),
         provided_jewelry_id INTEGER,
+        provided_color_id INTEGER,
         provided_percent DECIMAL(3,2)
 )
 AS
@@ -1004,7 +1010,7 @@ DECLARE
         'Authorization failed: ' ||
         'Incorrect password';
 BEGIN
-    IF NOT(
+    IF NOT (
         SELECT fn_role_authentication(
                     'merchandising', provided_last_modified_by_emp_id
                 )
@@ -1015,27 +1021,28 @@ BEGIN
             );
     END IF;
 
-    IF(
+    IF NOT (
         SELECT credentials_authentication(
             provided_staff_user_role,
             provided_staff_user_password,
             provided_last_modified_by_emp_id
             )
-        ) IS TRUE
+        )
     THEN
-        UPDATE
-            jewelries
-        SET
-            discount_price = regular_price - (regular_price * provided_percent)
-        WHERE
-            id = provided_jewelry_id;
-
-        IF provided_jewelry_id IN (
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    ELSE
+        IF (
             SELECT
-                jewelry_id
+                discount_price
             FROM
-                discounts
-            )
+                jewelries
+            WHERE
+                id = provided_jewelry_id
+                        AND
+                gold_color_id = provided_color_id
+               ) IS NOT NULL
         THEN
             UPDATE
                 discounts
@@ -1043,22 +1050,26 @@ BEGIN
                 percentage = provided_percent,
                 updated_at = NOW()
             WHERE
-                jewelry_id = provided_jewelry_id;
+                jewelry_id = provided_jewelry_id
+                        AND
+                color_id = provided_color_id;
 
         ELSE
             INSERT INTO
                 discounts(
-                          last_modified_by_emp_id,
-                          jewelry_id,
-                          percentage,
-                          created_at,
-                          updated_at,
-                          deleted_at
+                    last_modified_by_emp_id,
+                    jewelry_id,
+                    color_id,
+                    percentage,
+                    created_at,
+                    updated_at,
+                    deleted_at
                           )
             VALUES
                 (
-                 provided_last_modified_by_emp_id,
+                 provided_last_modified_by_emp_id::INTEGER,
                  provided_jewelry_id,
+                 provided_color_id,
                  provided_percent,
                  NOW(),
                  NULL,
@@ -1066,43 +1077,40 @@ BEGIN
                 );
         END IF;
 
-    ELSE
-        SELECT fn_raise_error_message(
-            authorisation_failed
-            );
+        UPDATE
+            jewelries
+        SET
+            discount_price = regular_price - (regular_price * provided_percent)
+        WHERE
+            id = provided_jewelry_id
+                    AND
+            gold_color_id = provided_color_id;
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
 ```
-#### The 'discounts' table is related to the 'jewelries' table so after we insert a percantage we can notice 'discount_price' in the latter:
-```plpgsql
-CALL sp_insert_percent_into_discounts(
-    'merchandising_staff_user_first',
-    'merchandising_password_first',
-    '10002',
-    1,
-    0.10
-);
+#### The `discounts` table is related to the `jewelries` table so after we insert a percantage we can notice `discount_price` in the latter:
 
-CALL sp_insert_percent_into_discounts(
-    'merchandising_staff_user_first',
-    'merchandising_password_first',
-    '10002',
-    2,
-    0.10);
-```
-##### 'jewelries' table:
-<img width="1275" alt="Screenshot 2023-10-20 at 16 58 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9801abea-1700-4abd-bea2-8320af8c112b">
+[Link to Insert Values File](insert_values_files/insert_into_discounts.sql)
+
+##### `jewelries` table:
+
+<img width="1384" alt="Screenshot 2023-10-27 at 14 20 04" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ebfa6d2d-beaf-49ea-a2cd-1c346ac732ef">
+
+##### `discounts` table:
+
+<img width="1246" alt="Screenshot 2023-10-27 at 14 22 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/e31a7128-e3be-4777-ac39-413677afdf0a">
 
 #### To return back to regular price of an item we use the procedure down below:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_remove_percent_from_discounts(
         provided_staff_user_role VARCHAR(30),
-        provided_staff_user_password VARCHAR(9),
+        provided_staff_user_password VARCHAR(30),
         provided_last_modified_by_emp_id CHAR(5),
-        provided_jewelry_id INTEGER
+        provided_jewelry_id INTEGER,
+        provided_color_id INTEGER
 )
 AS
 $$
@@ -1115,7 +1123,7 @@ DECLARE
         'Authorization failed: ' ||
         'Incorrect password';
 BEGIN
-    IF NOT(
+    IF NOT (
         SELECT fn_role_authentication(
                 'merchandising',
                 provided_last_modified_by_emp_id
@@ -1127,30 +1135,34 @@ BEGIN
             );
     END IF;
 
-        IF(
-            SELECT credentials_authentication(
-        provided_staff_user_role,
-        provided_staff_user_password,
-        provided_last_modified_by_emp_id)
-            )IS TRUE
+    IF NOT (
+        SELECT credentials_authentication(
+            provided_staff_user_role,
+            provided_staff_user_password,
+            provided_last_modified_by_emp_id
+            )
+        )
     THEN
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    ELSE
         UPDATE
             jewelries
         SET
             discount_price = NULL
         WHERE
-            id = provided_jewelry_id;
+            id = provided_jewelry_id
+                    AND
+            gold_color_id = provided_color_id;
         UPDATE
             discounts
         SET
-            deleted_at = DATE(NOW())
+            deleted_at = NOW()
         WHERE
-            jewelry_id = provided_jewelry_id;
-
-    ELSE
-        SELECT fn_raise_error_message(
-            authorisation_failed
-            );
+            jewelry_id = provided_jewelry_id
+                    AND
+            color_id = provided_color_id;
     END IF;
 END;
 $$
