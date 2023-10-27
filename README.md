@@ -922,33 +922,22 @@ CREATE OR REPLACE PROCEDURE
         provided_employee_id CHAR(5),
         provided_session_id INTEGER,
         provided_jewelry_id INTEGER,
+        provided_color_id INTEGER,
         added_quantity INTEGER
 )
 AS
 $$
 DECLARE
-    access_denied CONSTANT TEXT := 'Access Denied: You do not have the required authorization to perform actions into this department.';
-    authorisation_failed CONSTANT TEXT := 'Authorization failed: Incorrect password';
+    access_denied CONSTANT TEXT :=
+        'Access Denied: ' ||
+        'You do not have the required authorization to perform actions into this department.';
+    authorisation_failed CONSTANT TEXT :=
+        'Authorization failed: Incorrect password';
 BEGIN
     IF
-        provided_session_id IS NOT NULL
+        provided_session_id IS NULL
     THEN
-        UPDATE
-            inventory
-        SET
-            session_id = provided_session_id,
-            quantity = quantity + added_quantity,
-            updated_at = NOW()
-        WHERE
-            jewelry_id = provided_jewelry_id;
-        UPDATE
-            jewelries
-        SET
-            is_active = TRUE
-        WHERE
-            id = provided_jewelry_id;
-    ELSE
-        IF NOT(
+        IF NOT (
             SELECT fn_role_authentication(
                         'inventory', provided_employee_id
                         )
@@ -956,73 +945,43 @@ BEGIN
         THEN
             SELECT fn_raise_error_message(access_denied);
         END IF;
-        IF(
+
+        IF NOT (
             SELECT credentials_authentication(
                 provided_staff_user_role,
                 provided_staff_user_password,
                 provided_employee_id)
-            )IS TRUE
+            )
         THEN
-            UPDATE
-                inventory
-            SET
-                employee_id = provided_employee_id::INTEGER,
-                quantity = quantity + added_quantity,
-                updated_at = NOW()
-            WHERE
-                jewelry_id = provided_jewelry_id;
-            UPDATE
-                jewelries
-            SET
-                is_active = TRUE
-            WHERE
-                id = provided_jewelry_id;
-        ELSE
             SELECT fn_raise_error_message(authorisation_failed);
         END IF;
+
+        UPDATE
+            inventory
+        SET
+            inventory_emp_id = provided_employee_id::INTEGER,
+            updated_at = NOW()
+        WHERE
+            jewelry_id = provided_jewelry_id
+                    AND
+            color_id = provided_color_id;
+
     END IF;
+
+    UPDATE
+        inventory
+    SET
+        quantity = quantity + added_quantity,
+        deleted_at = NULL
+    WHERE
+        jewelry_id = provided_jewelry_id
+                AND
+        color_id = provided_color_id;
 END;
 $$
 LANGUAGE plpgsql;
 ```
-#### As the name suggests, the next trigger function serves to insert records into inventory on <ins>update</> and <ins>delete</ins>:
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_update()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type :=
-        (CASE
-            WHEN OLD.quantity < NEW.quantity THEN 'Update'
-            WHEN OLD.quantity > NEW.quantity THEN 'Delete'
-        END);
-    INSERT INTO
-            inventory_records(inventory_id, operation, date)
-    VALUES
-        (OLD.id, operation_type, NOW());
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_inventory_records_on_update
-AFTER UPDATE ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_update();
-##### 'jewerly' table:
-<img width="1322" alt="Screenshot 2023-10-20 at 16 27 23" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/36ccd7b6-f607-4232-8656-d86d474566af">
-
-##### 'inventory' table:
-<img width="1286" alt="Screenshot 2023-10-20 at 16 27 46" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/43d118c0-f101-460e-b347-39a3b8f80d70">
-
-##### 'inventory_records' table :
-<img width="740" alt="Screenshot 2023-10-20 at 16 28 06" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f26b1e80-e695-471f-860f-9aac0892a6a5">
+<img width="1387" alt="Screenshot 2023-10-27 at 13 45 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/cf5ad6f9-7541-4e62-be7b-0fbea6d10593">
 
 #### We are able to insert discount percetanges using the procedure in the subsequent section:
 ```plpgsql
