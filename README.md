@@ -2038,8 +2038,12 @@ LANGUAGE plpgsql;
 
 [Link to Insert Values File](insert_values_files/insert_register_customers.sql)
 
+##### `customer_users` table:
 
+<img width="1057" alt="Screenshot 2023-10-27 at 17 05 33" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ae8029c2-0db1-4d1e-a52d-fb5827f3b551">
 
+##### `customer_details` table:
 
+<img width="1336" alt="Screenshot 2023-10-27 at 17 11 33" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c20b5716-dd2a-41bc-8768-ccf474c1c809">
 
 #### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](e_commerce_database_platform.sql)
