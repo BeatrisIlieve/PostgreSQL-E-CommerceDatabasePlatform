@@ -2046,4 +2046,13 @@ LANGUAGE plpgsql;
 
 <img width="1336" alt="Screenshot 2023-10-27 at 17 11 33" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c20b5716-dd2a-41bc-8768-ccf474c1c809">
 
+##### `orders` table:
+
+<img width="887" alt="Screenshot 2023-10-27 at 17 13 07" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/dd9b862b-8c3a-4f8a-98a0-315297fbf6a1">
+
+##### `transactions` table:
+
+<img width="685" alt="Screenshot 2023-10-27 at 17 13 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f44c40db-3b94-42ba-9579-e21cecfb4ef4">
+
+
 #### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](e_commerce_database_platform.sql)
