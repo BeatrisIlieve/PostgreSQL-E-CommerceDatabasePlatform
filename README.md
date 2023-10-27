@@ -784,7 +784,7 @@ CREATE TABLE
              CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
 ```
-#### The next procedure is responsible for inserting items into the 'jewelries' table after authenticating a staff user belonging to the 'Merchandising' department:
+#### The next procedure is responsible for inserting items into the `jewelries` table after authenticating a staff user belonging to the 'Merchandising' department. It also adds the item to the `inventory` table, with default quantity of 0 as well as the ID of the employee:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_insert_jewelry_into_jewelries(
@@ -889,12 +889,6 @@ LANGUAGE plpgsql;
 ```
 #### Let us test the <ins>staff authentication process</ins> by inserting items into the 'jewelries' table. For that purpose we will need to provide a <ins>username</ins>, <ins>password</ins>, <ins>employee id</ins> and item information:
 
-[Link to Insert Values File](insert_values_files/insert_into_jewelries.sql)
-
-`jewelries` table:
-
-<img width="1378" alt="Screenshot 2023-10-27 at 13 09 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08d47d82-4f66-4c07-8c7c-27737ec3fa98">
-
 ##### From the tables above, we can see that every employee ID is retated to a 'staff_users' table with his/her credentials. So if we enter correct credentials but they do NOT correspond to employee ID (10004 that is related to the 'Inventory' and not Merchandising) passed to the `sp_insert_jewelry_into_jewelries` procedure, we will get the following error message:
 
 <img width="1135" alt="Screenshot 2023-10-27 at 13 19 50" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/841ec100-01f9-46ba-8f2c-49e10817adea">
@@ -907,60 +901,17 @@ LANGUAGE plpgsql;
 
 <img width="1132" alt="Screenshot 2023-10-27 at 13 25 32" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9b3724ff-d37b-4aec-88ca-bec4ea2b2b52">
 
-##### Correct input ('sp_insert_jewelry_into_jewelries' should be executed after 'trigger_fn_insert_new_entity_into_inventory_records_on_create', presented down below, has been created in order to observe the correct flow of the demo):
-```plpgsql
-CALL sp_insert_jewelry_into_jewelries(
-    'merchandising_staff_user_second',
-    'merchandising_password_second',
-    '10003',
-    4,
-    'CLASSIC DIAMOND TENNIS BRACELET',
-    'https://res.cloudinary.com/deztgvefu/image/upload/v1697351731/Rings/CLASSIC_DIAMOND_TENNIS_BRACELET_f1etis.webp',
-    7249.00,
-    'ROSE GOLD',
-    '1.11ctw',
-    'SI1-SI2',
-    'G-H',
-    'This classic diamond tennis bracelet is crafted from sterling silver and made with 18 round-cut diamonds. Each diamond is hand-selected for sparkle and set in a four-prong setting for maximum brilliance. This timeless piece is the perfect piece for any special occasion.Wear it to work, special events, or everyday activities to make a statement.'
-);
-```
-##### 'trigger_fn_insert_new_entity_into_inventory_records_on_create' serves to automatically add records when an insert operation occurs on the 'inventory' table proceeded by inserting on the 'jewelries' one:
-```plpgsql
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_create()
-RETURNS TRIGGER
-AS
-$$
-DECLARE
-    operation_type VARCHAR(6);
-BEGIN
-    operation_type := 'Create';
-    INSERT INTO
-            inventory_records(inventory_id, operation, date)
-    VALUES
-        (NEW.id, operation_type, NOW());
-    RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
+#### When staff credentials are correct the `jewelries` and `inventory` tables look like this:
 
-CREATE OR REPLACE TRIGGER
-    tr_insert_new_entity_into_inventory_records_on_create
-AFTER INSERT ON
-    inventory
-FOR EACH ROW
-EXECUTE FUNCTION
-    trigger_fn_insert_new_entity_into_inventory_records_on_create();
-```
-##### 'jewerly' table (the 'is_active' field is 'false' because no quantity has been added yet):
-<img width="1328" alt="Screenshot 2023-10-20 at 15 59 03" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/55a4fdc0-bbef-4321-a15f-8e6b1d3f4c48">
+[Link to Insert Values File](insert_values_files/insert_into_jewelries.sql)
 
-##### 'inventory' table (the 'session_id' field is needed in the cases when a customer is adding to or removing from their shopping cart which we will create later on):
-<img width="1171" alt="Screenshot 2023-10-20 at 16 00 07" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/0072fd2b-91e1-4b25-a510-7d3e3d304f5c">
+`jewelries` table:
 
-##### 'inventory_records' table that keeps information about every single <ins>create</ins>, <ins>update</ins> or <ins>delete</ins> operation on 'inventory' table:
-<img width="736" alt="Screenshot 2023-10-20 at 15 59 42" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fca895f6-e7a7-43db-940d-2fe4ae9ed825">
+<img width="1378" alt="Screenshot 2023-10-27 at 13 09 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08d47d82-4f66-4c07-8c7c-27737ec3fa98">
 
+`inventory` table:
+
+<img width="1385" alt="Screenshot 2023-10-27 at 13 38 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1164b897-e408-49e2-83af-b027f794ac15">
 
 #### After the items has been inserted, the Inventory department needs to declare available quantities. For that purpose, credentials and employee id must be passed to the next procedure :
 ```plpgsql
