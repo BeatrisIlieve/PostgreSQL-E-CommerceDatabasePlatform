@@ -27,46 +27,6 @@ CREATE TABLE countries(
     name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
-#### To showcase data from different tables, we will utilize the following SQL query with minor adaptations tailored to each specific table as needed. It's important to note that the displayed data will represent a subset of the entire dataset, as it helps us manage the length of the displayed information:
-
-```plpgsql
-SELECT 
-    *
-FROM
-    countries
-WHERE 
-    id >= 1 AND id <= 3
-UNION
-SELECT 
-    *
-FROM 
-    countries
-WHERE 
-    id >= 10 AND id <= 13
-UNION
-SELECT 
-    *
-FROM 
-    countries
-WHERE 
-    id >= 20 AND id <= 23
-UNION
-SELECT 
-    *
-FROM 
-    countries
-WHERE 
-    id >= 30 AND id <= 33
-UNION
-SELECT 
-    *
-FROM 
-    countries
-WHERE 
-    id >= 40 AND id <= 43
-ORDER BY 
-    id;
-```
 
 [Link to Insert Values File](insert_values_files/insert_into_countries.sql)
 
