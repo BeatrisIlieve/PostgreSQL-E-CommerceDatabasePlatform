@@ -1761,7 +1761,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We need two tables to store shippment details, which will be automatically populated in case of a successfull transaction:
+#### We need two tables to store shippment details:
 ```plpgsql
 CREATE TABLE
     shipping_label(
@@ -1799,6 +1799,176 @@ CREATE TABLE
                         ON UPDATE CASCADE
                         ON DELETE CASCADE
 );
+```
+#### The above tables will be automatically populated in case of a successfull transaction by the following two procedures:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_insert_into_shipping_label(
+        in_transaction_id INTEGER
+)
+AS
+$$
+BEGIN
+    INSERT INTO
+        shipping_label(
+            transaction_id,
+            due_date,
+            amount,
+            full_name,
+            phone_number,
+            country_name,
+            city_name,
+            address
+)
+    SELECT
+        tr.id,
+
+        CASE
+            WHEN
+                cou.id = 7
+            THEN
+                o.date + INTERVAL '7 DAYS'
+            ELSE
+                o.date + INTERVAL '14 DAYS'
+        END AS delivery_due_date,
+
+        tr.amount,
+
+        CONCAT(
+            cd.first_name,
+            ' ',
+            cd.last_name
+            ) AS customer_full_name,
+
+        cd.phone_number,
+
+        cou.name,
+
+        cit.name,
+
+        cd.address
+    FROM
+        transactions AS tr
+    JOIN
+        orders AS o
+    ON
+        tr.order_id = o.id
+    JOIN
+        shopping_cart AS sc
+    ON
+        o.shopping_cart_id = sc.id
+    JOIN
+        sessions AS s
+    ON
+        sc.session_id = s.id
+    JOIN
+        customer_users AS cu
+    ON
+        s.customer_id = cu.id
+    JOIN
+        customer_details AS cd
+    ON
+        cu.id = cd.customer_user_id
+    JOIN
+        countries_cities AS cc
+    ON
+        cd.countries_cities_id = cc.id
+    JOIN
+        countries AS cou
+    ON
+        cc.country_id = cou.id
+    JOIN
+        cities AS cit
+    ON
+        cc.city_id = cit.id
+    WHERE
+        tr.id = in_transaction_id;
+
+    CALL sp_insert_into_shipment_description(
+            in_transaction_id
+        );
+END;
+$$
+LANGUAGE plpgsql;
+```
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_insert_into_shipment_description(
+        in_transaction_id INTEGER
+)
+AS
+$$
+BEGIN
+    INSERT INTO
+        shipment_description(
+            shipping_label,
+            jewelry_type,
+            gold_color,
+            diamond_color,
+            diamond_carat,
+            diamond_clarity
+    )
+    SELECT
+        sl.id,
+
+        jt.name,
+
+        gc.color,
+
+        dc.color,
+
+        dcw.weight,
+
+        dcl.clarity
+    FROM
+        shipping_label AS sl
+    JOIN
+        transactions AS tr
+    ON
+        sl.transaction_id = tr.id
+    JOIN
+        orders AS ord
+    ON
+        tr.order_id = ord.id
+    JOIN
+        shopping_cart AS sc
+    ON
+        sc.id = ord.shopping_cart_id
+    JOIN
+        inventory AS inv
+    ON
+        sc.inventory_id = inv.id
+    JOIN
+        jewelries AS j
+    ON
+        inv.jewelry_id = j.id
+                AND
+        inv.color_id = j.gold_color_id
+    JOIN
+        jewelry_type AS jt
+    ON
+        j.type_id = jt.id
+    JOIN
+        gold_color AS gc
+    ON
+        j.gold_color_id = gc.id
+    JOIN
+        diamond_color AS dc
+    ON
+        j.diamond_color_id = dc.id
+    JOIN
+        diamond_carat_weight AS dcw
+    ON
+        j.diamond_carat_weight_id = dcw.id
+    JOIN
+        diamond_clarity AS dcl
+    ON
+        j.diamond_clarity_id = dcl.id
+    WHERE
+        tr.id = in_transaction_id;
+END;
+$$
+LANGUAGE plpgsql;
 ```
 #### In case of insufficient balance, an error would be raised. Otherwise, data would be inserted into the `transactions` and `orders` tables:
 ```plpgsql
