@@ -27,7 +27,7 @@ CREATE TABLE countries(
     name VARCHAR(30) UNIQUE NOT NULL
 );
 ```
-#### To showcase the data inserted into the `countries` table, we have used the following SQL query as we will do later on:
+#### To showcase data from different tables, we will utilize the following SQL query with minor adaptations tailored to each specific table as needed. It's important to note that the displayed data will represent a subset of the entire dataset, as it helps us manage the length of the displayed information:
 
 ```plpgsql
 SELECT 
@@ -80,9 +80,7 @@ CREATE TABLE cities(
 ```
 [Link to Insert Values File](insert_values_files/insert_into_cities.sql)
 
-<img width="269" alt="Screenshot 2023-10-26 at 18 50 40" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f4417d2b-36e3-4599-b796-335d9106caf7">
-
-<img width="254" alt="Screenshot 2023-10-26 at 18 54 08" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fbe80832-d4aa-4796-8adb-22eb5db8a0aa">
+<img width="263" alt="Screenshot 2023-10-27 at 7 31 29" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/99c1d72c-c1ca-447f-974e-06a99b7c8a72">
 
 ```plpgsql
 CREATE TABLE
@@ -106,10 +104,7 @@ CREATE TABLE
 ```
 [Link to Insert Values File](insert_values_files/insert_into_countries_cities.sql)
 
-<img width="372" alt="Screenshot 2023-10-26 at 18 56 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7516b286-c0be-4ce3-91f2-72d3c277342f">
-
-<img width="379" alt="Screenshot 2023-10-26 at 18 59 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/8b6b4fd1-d7bd-416f-9ab5-e000a4420a2d">
-
+<img width="386" alt="Screenshot 2023-10-27 at 7 35 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7a8d38b3-8b75-4898-8da3-b9f60bb4c754">
 
 #### The second table associated with customers keeps their <ins>Personal Information</ins> - which is obligatory for a putchase to be made so as to proceed with payment and delivery:
 ```plpgsql
@@ -120,6 +115,8 @@ CREATE TABLE
         first_name VARCHAR(30),
         last_name VARCHAR(30),
         phone_number VARCHAR(20),
+        countries_cities_id INTEGER,
+        address VARCHAR(200),
         current_balance DECIMAL(8, 2),
         payment_provider VARCHAR(100),
 
@@ -127,14 +124,20 @@ CREATE TABLE
                      FOREIGN KEY (customer_user_id)
                      REFERENCES customer_users(id)
                      ON UPDATE CASCADE
-                     ON DELETE CASCADE
+                     ON DELETE CASCADE,
+
+        CONSTRAINT fk_customer_details_countries_cities
+                    FOREIGN KEY (countries_cities_id)
+                    REFERENCES countries_cities(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
 );
 ```
 #### We have isolated the error-raising logic in a separate function:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     fn_raise_error_message(
-    provided_error_message VARCHAR(300)
+        provided_error_message VARCHAR(300)
 )
 RETURNS VOID
 AS
@@ -145,13 +148,13 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We have simulated user registration process that inludes providing <ins>Unique</ins> email as a username and a <ins>Secure Confirmed Password</ins> inserted into into the 'customer_users' table:
+#### We have simulated user registration process that inludes providing <ins>Unique email</ins>  as a username and a <ins>Secure Confirmed Password</ins>. The data is stored into the `customer_users` table. Users who have just completed the registration process are <ins>Automatically logged-in</ins>:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     fn_register_user(
-      provided_email VARCHAR(30),
-      provided_password VARCHAR(15),
-      provided_verifying_password VARCHAR(15)
+        provided_email VARCHAR(30),
+        provided_password VARCHAR(15),
+        provided_verifying_password VARCHAR(15)
 )
 RETURNS VOID
 AS
@@ -198,17 +201,18 @@ BEGIN
         hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
 
         INSERT INTO customer_users
-            (email, password, created_at, updated_at, deleted_at)
+            (email, password, created_at)
         VALUES
-            (provided_email, hashed_password , DATE(NOW()), NULL, NULL);
+            (provided_email, hashed_password , NOW());
 
         CALL sp_login_user(provided_email, provided_password);
+
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
 ```
-#### The Trigger function below executes inserting the created <ins>Customer ID</ins> into 'custumers_details' table:
+#### The Trigger function below executes inserting the created <ins>Customer ID</ins> into `custumers_details` table:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     trigger_fn_insert_id_into_customer_details()
@@ -225,7 +229,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE TRIGGER
     tr_insert_id_into_customer_details
 AFTER INSERT ON
@@ -234,12 +237,12 @@ FOR EACH ROW
 EXECUTE FUNCTION
     trigger_fn_insert_id_into_customer_details();
 ```
-#### The next Procedure takes care of <ins>Automatically logging-in</ins> customers who have just completed the registration process. It also calls Procedure that simulates generating <ins>Cookie Tokens</ins> using <ins>JSON format</ins>:
+#### The `sp_login_user` calls another procedure that simulates generating <ins>Cookie Tokens</ins> using <ins>JSON format</ins>:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_login_user(
-    provided_email VARCHAR(30),
-    provided_password VARCHAR(15)
+        provided_email VARCHAR(30),
+        provided_password VARCHAR(15)
 )
 AS
 $$
@@ -309,7 +312,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### Session token is saved in 'sessions' table:
+#### Session token is being saved in `sessions` table:
 ```plpgsql
 CREATE TABLE sessions(
     id SERIAL PRIMARY KEY,
