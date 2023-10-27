@@ -1603,7 +1603,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details and available balance, so we can check if the transfer could be procedeed. After the `sp_complete_order` procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the 'sp_transfer_money' procedure:
+#### For the pusposes of the project, a customer needs to declare a payment provider name, also must insert their personal details and available balance, so we can check if the transfer could be procedeed. After the `sp_complete_order` procedure is called, it will calculate the total amount, taking into consideration if the product has a discount price or not, it will then select the `sp_transfer_money` procedure:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_complete_order(
@@ -1761,7 +1761,46 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### In case of insufficient balance, an error would be raised. Otherwise, data would be inserted into the 'transactions' and 'orders' tables:
+#### We need two tables to store shippment details, which will be automatically populated in case of a successfull transaction:
+```plpgsql
+CREATE TABLE
+    shipping_label(
+        id SERIAL PRIMARY KEY,
+        transaction_id INTEGER NOT NULL,
+        due_date TIMESTAMPTZ,
+        amount DECIMAL(8, 2),
+        full_name VARCHAR(70),
+        phone_number VARCHAR(20),
+        country_name VARCHAR(30),
+        city_name VARCHAR(30),
+        address VARCHAR(200) NOT NULL,
+
+        CONSTRAINT fk_shipping_label_transactions
+                    FOREIGN KEY (transaction_id)
+                    REFERENCES transactions(id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+);
+```
+```plpgsql
+CREATE TABLE
+    shipment_description(
+        id SERIAL PRIMARY KEY,
+        shipping_label INTEGER NOT NULL,
+        jewelry_type VARCHAR(30),
+        gold_color VARCHAR(15),
+        diamond_color VARCHAR(15),
+        diamond_carat VARCHAR(15),
+        diamond_clarity VARCHAR(15),
+
+        CONSTRAINT fk_shipment_description_shipping_label
+                        FOREIGN KEY (shipping_label)
+                        REFERENCES shipping_label(id)
+                        ON UPDATE CASCADE
+                        ON DELETE CASCADE
+);
+```
+#### In case of insufficient balance, an error would be raised. Otherwise, data would be inserted into the `transactions` and `orders` tables:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_transfer_money(
@@ -1775,7 +1814,9 @@ $$
 DECLARE
     insufficient_balance CONSTANT TEXT :=
         ('Insufficient balance to complete the transaction. ' ||
-         'Needed amount: %', needed_balance);
+         CONCAT('Needed amount: ', needed_balance));
+
+    current_transaction_id INTEGER;
 BEGIN
     IF
         (available_balance - needed_balance) < 0
@@ -1792,20 +1833,12 @@ BEGIN
         WHERE
             id = provided_customer_id;
 
-            UPDATE
-                orders
-            SET
-                is_completed = True
-            WHERE
-                id = in_session_id;
-
-
             INSERT INTO
                 transactions(
-                             order_id,
-                             amount,
-                             date
-                             )
+                     order_id,
+                     amount,
+                     date
+                     )
             VALUES
                 (
                  in_session_id,
@@ -1813,6 +1846,15 @@ BEGIN
                  NOW()
                 );
 
+        current_transaction_id := (
+            SELECT
+                MAX(id)
+            FROM
+                transactions
+                );
+        CALL sp_insert_into_shipping_label(
+            current_transaction_id
+            );
     END IF;
 END;
 $$
