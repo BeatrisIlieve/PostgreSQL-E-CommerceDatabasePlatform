@@ -164,8 +164,16 @@ DECLARE
         'This email address is already in use. ' ||
         'Please use a different email address or try logging in with your existing account.';
 
-    password_not_secure CONSTANT TEXT :=
-        'The password should contain at least one special character and at least one digit. ' ||
+    password_does_not_contain_special_character CONSTANT TEXT :=
+        'The password must contain at least one special character. ' ||
+        'Please make sure you enter a secure password.';
+
+    password_does_not_contain_digit CONSTANT TEXT :=
+        'The password must contain at least one digit. ' ||
+        'Please make sure you enter a secure password.';
+
+    password_too_short CONSTANT TEXT :=
+        'The password must be at least 8 characters long.' ||
         'Please make sure you enter a secure password.';
 
     passwords_do_not_match CONSTANT TEXT :=
@@ -173,6 +181,15 @@ DECLARE
         'Please make sure that both fields contain the same password.';
 
     hashed_password VARCHAR;
+
+    special_characters CONSTANT TEXT :=
+        '[!#$%&()*+,-./:;<=>?@^_`{|}~]';
+
+    digits CONSTANT TEXT :=
+        '[0-9]';
+
+    min_password_length CONSTANT INTEGER :=
+        8;
 
 BEGIN
     IF provided_email IN (
@@ -183,31 +200,86 @@ BEGIN
             )
     THEN
         SELECT
-            fn_raise_error_message(email_already_in_use);
+            fn_raise_error_message(
+                email_already_in_use
+                );
 
     ELSIF
-        NOT provided_password ~ '[0-9!#$%&()*+,-./:;<=>?@^_`{|}~]'
+        NOT provided_password ~ special_characters
     THEN
         SELECT
-            fn_raise_error_message(password_not_secure);
+            fn_raise_error_message(
+                    password_does_not_contain_special_character
+                    );
+    ELSIF
+        NOT provided_password ~ digits
+    THEN
+        SELECT
+            fn_raise_error_message(
+                    password_does_not_contain_digit
+                    );
+
+    ELSIF
+        LENGTH(provided_password) < min_password_length
+    THEN
+        SELECT
+            fn_raise_error_message(
+                    password_too_short
+                    );
 
     ELSIF
         provided_password NOT LIKE provided_verifying_password
     THEN
         SELECT
-            fn_raise_error_message(passwords_do_not_match);
+            fn_raise_error_message(
+                    passwords_do_not_match
+                );
 
     ELSE
-        hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
+        hashed_password := ENCODE(
+            DIGEST(
+                provided_password, 'sha256'
+                ), 'hex'
+            );
 
         INSERT INTO customer_users
-            (email, password, created_at)
+            (
+             email,
+             password,
+             created_at
+             )
         VALUES
-            (provided_email, hashed_password , NOW());
+            (
+             provided_email,
+             hashed_password ,
+             NOW()
+             );
 
-        CALL sp_login_user(provided_email, provided_password);
+        CALL sp_login_user(
+                provided_email,
+                provided_password
+            );
 
     END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION
+    trigger_fn_insert_id_into_customer_details()
+RETURNS TRIGGER
+AS
+$$
+BEGIN
+    INSERT INTO
+        customer_details(
+            customer_user_id
+         )
+    VALUES
+        (
+         NEW.id
+         );
+    RETURN NEW;
 END;
 $$
 LANGUAGE plpgsql;
@@ -220,10 +292,14 @@ RETURNS TRIGGER
 AS
 $$
 BEGIN
-    INSERT INTO customer_details
-        (customer_user_id)
+    INSERT INTO
+        customer_details(
+            customer_user_id
+         )
     VALUES
-        (NEW.id);
+        (
+         NEW.id
+         );
     RETURN NEW;
 END;
 $$
@@ -251,59 +327,33 @@ DECLARE
         'The email or password you entered is incorrect. ' ||
         'Please check your email and password, and try again.';
 
-    is_email_valid BOOLEAN;
-
-    is_password_valid BOOLEAN;
-
     hashed_password VARCHAR(100);
 
     user_id INTEGER;
 BEGIN
-    IF provided_email IN (
-        SELECT
-            cu.email
-        FROM
-            customer_users AS cu
-        )
-    THEN
-        is_email_valid := TRUE;
-    ELSE
-        is_email_valid := FALSE;
-    END IF;
+    hashed_password := ENCODE(
+        DIGEST(
+            provided_password, 'sha256'
+            ), 'hex'
+        );
 
-    hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
-
-    IF hashed_password IN (
-        SELECT
-            cu.password
-        FROM
-            customer_users AS cu
-        )
-        THEN
-            is_password_valid := TRUE;
-
-    ELSE
-        is_password_valid := FALSE;
-    END IF;
+    user_id := (
+            SELECT
+                id
+            FROM
+                customer_users
+            WHERE
+                email= provided_email
+                        AND
+                password = hashed_password
+        );
 
     IF
-        is_email_valid IS FALSE
-            OR
-        is_password_valid IS FALSE
+        user_id IS NULL
     THEN
         SELECT fn_raise_error_message(credentials_not_correct);
 
     ELSE
-        user_id := (
-                SELECT
-                    id
-                FROM
-                    customer_users
-                WHERE
-                    email = provided_email
-                            AND
-                    password = hashed_password
-                );
         CALL sp_generate_session_token(
                 user_id
         );
@@ -338,7 +388,6 @@ AS
 $$
 DECLARE
     current_session_data JSONB;
-
     current_expiration_time TIMESTAMPTZ;
 BEGIN
     current_session_data := jsonb_build_object(
@@ -365,25 +414,30 @@ BEGIN
 
     ELSE
         INSERT INTO
-            sessions(customer_id, is_active, session_data, expiration_time)
+            sessions(
+                     customer_id,
+                     is_active,
+                     session_data,
+                     expiration_time
+                     )
         VALUES
-            (current_customer_id, TRUE, current_session_data, current_expiration_time);
+            (
+             current_customer_id,
+             TRUE,
+             current_session_data,
+             current_expiration_time
+             );
 
     END IF;
 END;
 $$
 LANGUAGE plpgsql;
 ```
-#### The following line is doing the magic so we can see the result below:
-```plpgsql
-SELECT fn_register_user(
-    'beatris@icloud.com',
-    '#6hhhhh',
-    '#6hhhhh'
-);
-```
-##### If we try to enter a password which does not contain at least one special character and one digit:
-<img width="917" alt="Screenshot 2023-10-19 at 19 11 22" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a842a763-0c50-4e90-b17a-361103d73033">
+##### If we try to register with a password which does not contain at least one special character:
+<img width="775" alt="Screenshot 2023-10-27 at 11 02 50" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/0f271256-3403-4161-9646-8ca4eda61795">
+
+##### If the password is not at least 8 digits long:
+
 
 ##### If passwords do not match:
 <img width="836" alt="Screenshot 2023-10-19 at 19 15 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fb43824a-de63-49a5-9aec-4357f1fda683">
