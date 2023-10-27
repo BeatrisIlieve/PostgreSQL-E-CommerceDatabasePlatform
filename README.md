@@ -641,7 +641,7 @@ CREATE TABLE
 ```
 [Link to Insert Values File](insert_values_files/insert_into_diamond_weight.sql)
 
-`diamond_color`:
+`diamond_carat_weight`:
 
 <img width="215" alt="Screenshot 2023-10-27 at 12 37 14" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d6cae2c7-5f4c-4d0d-a842-3e24f26cda15">
 
