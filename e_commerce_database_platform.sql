@@ -872,8 +872,16 @@ DECLARE
         'This email address is already in use. ' ||
         'Please use a different email address or try logging in with your existing account.';
 
-    password_not_secure CONSTANT TEXT :=
-        'The password should contain at least one special character and at least one digit. ' ||
+    password_does_not_contain_special_character CONSTANT TEXT :=
+        'The password must contain at least one special character. ' ||
+        'Please make sure you enter a secure password.';
+
+    password_does_not_contain_digit CONSTANT TEXT :=
+        'The password must contain at least one digit. ' ||
+        'Please make sure you enter a secure password.';
+
+    password_too_short CONSTANT TEXT :=
+        'The password must be at least 8 characters long.' ||
         'Please make sure you enter a secure password.';
 
     passwords_do_not_match CONSTANT TEXT :=
@@ -881,6 +889,15 @@ DECLARE
         'Please make sure that both fields contain the same password.';
 
     hashed_password VARCHAR;
+
+    special_characters CONSTANT TEXT :=
+        '[!#$%&()*+,-./:;<=>?@^_`{|}~]';
+
+    digits CONSTANT TEXT :=
+        '[0-9]';
+
+    min_password_length CONSTANT INTEGER :=
+        8;
 
 BEGIN
     IF provided_email IN (
@@ -891,29 +908,65 @@ BEGIN
             )
     THEN
         SELECT
-            fn_raise_error_message(email_already_in_use);
+            fn_raise_error_message(
+                email_already_in_use
+                );
 
     ELSIF
-        NOT provided_password ~ '[0-9!#$%&()*+,-./:;<=>?@^_`{|}~]'
+        NOT provided_password ~ special_characters
     THEN
         SELECT
-            fn_raise_error_message(password_not_secure);
+            fn_raise_error_message(
+                    password_does_not_contain_special_character
+                    );
+    ELSIF
+        NOT provided_password ~ digits
+    THEN
+        SELECT
+            fn_raise_error_message(
+                    password_does_not_contain_digit
+                    );
+
+    ELSIF
+        LENGTH(provided_password) < min_password_length
+    THEN
+        SELECT
+            fn_raise_error_message(
+                    password_too_short
+                    );
 
     ELSIF
         provided_password NOT LIKE provided_verifying_password
     THEN
         SELECT
-            fn_raise_error_message(passwords_do_not_match);
+            fn_raise_error_message(
+                    passwords_do_not_match
+                );
 
     ELSE
-        hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
+        hashed_password := ENCODE(
+            DIGEST(
+                provided_password, 'sha256'
+                ), 'hex'
+            );
 
         INSERT INTO customer_users
-            (email, password, created_at)
+            (
+             email,
+             password,
+             created_at
+             )
         VALUES
-            (provided_email, hashed_password , NOW());
+            (
+             provided_email,
+             hashed_password ,
+             NOW()
+             );
 
-        CALL sp_login_user(provided_email, provided_password);
+        CALL sp_login_user(
+                provided_email,
+                provided_password
+            );
 
     END IF;
 END;
@@ -926,10 +979,14 @@ RETURNS TRIGGER
 AS
 $$
 BEGIN
-    INSERT INTO customer_details
-        (customer_user_id)
+    INSERT INTO
+        customer_details(
+            customer_user_id
+         )
     VALUES
-        (NEW.id);
+        (
+         NEW.id
+         );
     RETURN NEW;
 END;
 $$
@@ -945,8 +1002,8 @@ EXECUTE FUNCTION
 
 CREATE OR REPLACE PROCEDURE
     sp_login_user(
-    provided_email VARCHAR(30),
-    provided_password VARCHAR(15)
+        provided_email VARCHAR(30),
+        provided_password VARCHAR(15)
 )
 AS
 $$
@@ -955,59 +1012,33 @@ DECLARE
         'The email or password you entered is incorrect. ' ||
         'Please check your email and password, and try again.';
 
-    is_email_valid BOOLEAN;
-
-    is_password_valid BOOLEAN;
-
     hashed_password VARCHAR(100);
 
     user_id INTEGER;
 BEGIN
-    IF provided_email IN (
-        SELECT
-            cu.email
-        FROM
-            customer_users AS cu
-        )
-    THEN
-        is_email_valid := TRUE;
-    ELSE
-        is_email_valid := FALSE;
-    END IF;
+    hashed_password := ENCODE(
+        DIGEST(
+            provided_password, 'sha256'
+            ), 'hex'
+        );
 
-    hashed_password := encode(digest(provided_password, 'sha256'), 'hex');
-
-    IF hashed_password IN (
-        SELECT
-            cu.password
-        FROM
-            customer_users AS cu
-        )
-        THEN
-            is_password_valid := TRUE;
-
-    ELSE
-        is_password_valid := FALSE;
-    END IF;
+    user_id := (
+            SELECT
+                id
+            FROM
+                customer_users
+            WHERE
+                email= provided_email
+                        AND
+                password = hashed_password
+        );
 
     IF
-        is_email_valid IS FALSE
-            OR
-        is_password_valid IS FALSE
+        user_id IS NULL
     THEN
         SELECT fn_raise_error_message(credentials_not_correct);
 
     ELSE
-        user_id := (
-                SELECT
-                    id
-                FROM
-                    customer_users
-                WHERE
-                    email = provided_email
-                            AND
-                    password = hashed_password
-                );
         CALL sp_generate_session_token(
                 user_id
         );
@@ -1064,9 +1095,19 @@ BEGIN
 
     ELSE
         INSERT INTO
-            sessions(customer_id, is_active, session_data, expiration_time)
+            sessions(
+                     customer_id,
+                     is_active,
+                     session_data,
+                     expiration_time
+                     )
         VALUES
-            (current_customer_id, TRUE, current_session_data, current_expiration_time);
+            (
+             current_customer_id,
+             TRUE,
+             current_session_data,
+             current_expiration_time
+             );
 
     END IF;
 END;
@@ -1150,7 +1191,7 @@ CREATE TABLE
         last_name VARCHAR(30) NOT NULL,
         email VARCHAR(30) NOT NULL,
         phone_number VARCHAR(20) NOT NULL,
-        employed_at DATE,
+        employed_at DATE NOT NULL,
 
         CONSTRAINT fk_employees_staff_users
             FOREIGN KEY (staff_user_id)
@@ -1171,7 +1212,8 @@ INSERT INTO
               department_id,
               first_name,
               last_name, email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -1180,7 +1222,8 @@ VALUES
      'Beatris',
      'Ilieve',
      'beatris@icloud.com',
-     '000-000-000'
+     '000-000-000',
+     NOW()
      );
 
 INSERT INTO
@@ -1190,7 +1233,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -1199,7 +1243,8 @@ VALUES
      'Terri',
      'Aldersley',
      'taldersley0@army.mil',
-     '198-393-2278'
+     '198-393-2278',
+     NOW()
      );
 
 INSERT INTO
@@ -1209,7 +1254,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -1218,7 +1264,8 @@ VALUES
      'Rose',
      'Obrey',
      'r@obrey.net',
-     '631-969-8114'
+     '631-969-8114',
+     NOW()
      );
 
 INSERT INTO
@@ -1228,7 +1275,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -1237,7 +1285,8 @@ VALUES
      'Mariette',
      'Caltera',
      'mcaltera4@cpanel.net',
-     '515-969-8114'
+     '515-969-8114',
+     NOW()
      );
 
 INSERT INTO
@@ -1247,7 +1296,8 @@ INSERT INTO
               first_name,
               last_name,
               email,
-              phone_number
+              phone_number,
+              employed_at
               )
 VALUES
     (
@@ -1256,7 +1306,8 @@ VALUES
      'Elen',
      'Williams',
      'elen@ebay.com',
-     '812-263-4473'
+     '812-263-4473',
+     NOW()
      );
 
 CREATE OR REPLACE FUNCTION
@@ -1587,21 +1638,6 @@ CREATE TABLE
              REFERENCES employees(id)
              ON UPDATE CASCADE
              ON DELETE SET NULL
-);
-
-CREATE TABLE
-    discounts(
-        id SERIAL PRIMARY KEY,
-        last_modified_by_emp_id CHAR(5) NOT NULL,
-        jewelry_id INTEGER NOT NULL,
-        color_id INTEGER NOT NULL,
-        percentage DECIMAL(3,2) NOT NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ,
-
-        CONSTRAINT ck_discounts_percentage
-             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
 );
 
 CREATE OR REPLACE PROCEDURE
@@ -2071,6 +2107,20 @@ CALL sp_add_quantity_into_inventory(
     3,
     5);
 
+CREATE TABLE
+    discounts(
+        id SERIAL PRIMARY KEY,
+        last_modified_by_emp_id CHAR(5) NOT NULL,
+        jewelry_id INTEGER NOT NULL,
+        color_id INTEGER NOT NULL,
+        percentage DECIMAL(3,2) NOT NULL,
+        created_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ,
+
+        CONSTRAINT ck_discounts_percentage
+             CHECK ( LEFT(CAST(percentage AS TEXT), 1) = '0' )
+);
 
 CREATE OR REPLACE PROCEDURE
     sp_insert_percent_into_discounts(
@@ -2092,7 +2142,7 @@ DECLARE
         'Authorization failed: ' ||
         'Incorrect password';
 BEGIN
-    IF NOT(
+    IF NOT (
         SELECT fn_role_authentication(
                     'merchandising', provided_last_modified_by_emp_id
                 )
@@ -2103,23 +2153,18 @@ BEGIN
             );
     END IF;
 
-    IF(
+    IF NOT (
         SELECT credentials_authentication(
             provided_staff_user_role,
             provided_staff_user_password,
             provided_last_modified_by_emp_id
             )
-        ) IS TRUE
+        )
     THEN
-        UPDATE
-            jewelries
-        SET
-            discount_price = regular_price - (regular_price * provided_percent)
-        WHERE
-            id = provided_jewelry_id
-                    AND
-            gold_color_id = provided_color_id;
-
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    ELSE
         IF (
             SELECT
                 discount_price
@@ -2154,7 +2199,7 @@ BEGIN
                           )
             VALUES
                 (
-                 provided_last_modified_by_emp_id,
+                 provided_last_modified_by_emp_id::INTEGER,
                  provided_jewelry_id,
                  provided_color_id,
                  provided_percent,
@@ -2164,10 +2209,14 @@ BEGIN
                 );
         END IF;
 
-    ELSE
-        SELECT fn_raise_error_message(
-            authorisation_failed
-            );
+        UPDATE
+            jewelries
+        SET
+            discount_price = regular_price - (regular_price * provided_percent)
+        WHERE
+            id = provided_jewelry_id
+                    AND
+            gold_color_id = provided_color_id;
     END IF;
 END;
 $$
@@ -2225,7 +2274,7 @@ DECLARE
         'Authorization failed: ' ||
         'Incorrect password';
 BEGIN
-    IF NOT(
+    IF NOT (
         SELECT fn_role_authentication(
                 'merchandising',
                 provided_last_modified_by_emp_id
@@ -2237,13 +2286,17 @@ BEGIN
             );
     END IF;
 
-    IF(
+    IF NOT (
         SELECT credentials_authentication(
     provided_staff_user_role,
     provided_staff_user_password,
     provided_last_modified_by_emp_id)
-        )IS TRUE
+        )
     THEN
+        SELECT fn_raise_error_message(
+            authorisation_failed
+            );
+    ELSE
         UPDATE
             jewelries
         SET
@@ -2260,11 +2313,6 @@ BEGIN
             jewelry_id = provided_jewelry_id
                     AND
             color_id = provided_color_id;
-
-    ELSE
-        SELECT fn_raise_error_message(
-            authorisation_failed
-            );
     END IF;
 END;
 $$
@@ -2274,7 +2322,7 @@ CALL sp_remove_percent_from_discounts(
     'merchandising_staff_user_first',
     'merchandising_password_first',
     '10002',
-    30001,
+    60001,
     1);
 
 CREATE TABLE
@@ -2463,18 +2511,41 @@ BEGIN
             );
 
     ELSE
-        INSERT INTO
-            shopping_cart(
-                    session_id,
-                    inventory_id,
-                    quantity
-                          )
-        VALUES
-            (
-             provided_session_id,
-             provided_inventory_id,
-             provided_quantity
-             );
+        IF (
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    shopping_cart
+                WHERE
+                    inventory_id = provided_inventory_id
+                            AND
+                    session_id = provided_session_id
+            )
+            )
+        THEN
+            UPDATE
+                shopping_cart
+            SET
+                quantity = quantity + provided_quantity
+            WHERE
+                inventory_id = provided_inventory_id
+                            AND
+                session_id = provided_session_id;
+        ELSE
+            INSERT INTO
+                shopping_cart(
+                        session_id,
+                        inventory_id,
+                        quantity
+                              )
+            VALUES
+                (
+                 provided_session_id,
+                 provided_inventory_id,
+                 provided_quantity
+                 );
+        END IF;
 
         CALL sp_remove_quantity_from_inventory(
             provided_inventory_id,
@@ -2537,7 +2608,9 @@ BEGIN
         SET
             quantity = quantity - provided_quantity
         WHERE
-            inventory_id = provided_inventory_id;
+            inventory_id = provided_inventory_id
+                        AND
+            session_id = provided_session_id;
 
         CALL sp_add_quantity_into_inventory(
             NULL,
@@ -2855,7 +2928,9 @@ BEGIN
             FROM
                 transactions
                 );
-        CALL sp_insert_into_shipping_label(current_transaction_id);
+        CALL sp_insert_into_shipping_label(
+            current_transaction_id
+            );
     END IF;
 END;
 $$
@@ -2944,7 +3019,8 @@ BEGIN
         tr.id = in_transaction_id;
 
     CALL sp_insert_into_shipment_description(
-            in_transaction_id);
+            in_transaction_id
+        );
 END;
 $$
 LANGUAGE plpgsql;
@@ -3027,8 +3103,20 @@ END;
 $$
 LANGUAGE plpgsql;
 
-SELECT fn_register_user('beatris@icloud.com', '#6hhh', '#6hhh');
-CALL sp_add_to_shopping_cart(1, 1, 3);
+SELECT
+    fn_register_user(
+        'beatris@icloud.com',
+        '&1abcdef',
+        '&1abcdef'
+    );
+
+CALL sp_add_to_shopping_cart(
+    1,
+    1,
+    21
+    );
+
+
 CALL sp_complete_order(
     1,
     'Beatris',
@@ -3041,7 +3129,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('peter@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('peter@email.com', '2&abcdef', '2&abcdef');
 CALL sp_add_to_shopping_cart(2, 5, 3);
 CALL sp_complete_order(
     2,
@@ -3055,7 +3143,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('welch@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('welch@email.com', '3&abcdef', '3&abcdef');
 CALL sp_add_to_shopping_cart(3, 1, 2);
 CALL sp_complete_order(
     3,
@@ -3069,7 +3157,7 @@ CALL sp_complete_order(
     'Amazon Pay'
 );
 
-SELECT fn_register_user('kellie@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('kellie@email.com', '4&abcdef', '4&abcdef');
 CALL sp_add_to_shopping_cart(4, 1, 2);
 CALL sp_complete_order(
     4,
@@ -3077,13 +3165,13 @@ CALL sp_complete_order(
     'Minihane',
     '231-204-9598',
     'Iceland',
-    'Banja Luka',
+    'Kópavogur',
     'Some address',
     200000.00,
     'PayPal'
 );
 
-SELECT fn_register_user('flora@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('flora@email.com', '5&abcdef', '5&abcdef');
 CALL sp_add_to_shopping_cart(5, 11, 3);
 CALL sp_complete_order(
     5,
@@ -3097,7 +3185,7 @@ CALL sp_complete_order(
     'Stripe'
 );
 
-SELECT fn_register_user('james@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('james@email.com', '6&abcdef', '6&abcdef');
 CALL sp_add_to_shopping_cart(6, 1, 2);
 CALL sp_complete_order(
     6,
@@ -3111,7 +3199,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('even@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('even@email.com', '7&abcdef', '7&abcdef');
 CALL sp_add_to_shopping_cart(7, 12, 3);
 CALL sp_complete_order(
     7,
@@ -3125,7 +3213,7 @@ CALL sp_complete_order(
     'Stripe'
 );
 
-SELECT fn_register_user('george@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('george@email.com', '8&abcdef', '8&abcdef');
 CALL sp_add_to_shopping_cart(8, 10, 3);
 CALL sp_complete_order(
     8,
@@ -3139,7 +3227,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('john@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('john@email.com', '9&abcdef', '9&abcdef');
 CALL sp_add_to_shopping_cart(9, 1, 3);
 CALL sp_complete_order(
     9,
@@ -3153,7 +3241,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('hans@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('hans@email.com', '10&abcdef', '10&abcdef');
 CALL sp_add_to_shopping_cart(10, 2, 1);
 CALL sp_complete_order(
     10,
@@ -3167,7 +3255,7 @@ CALL sp_complete_order(
     'Amazon Pay'
 );
 
-SELECT fn_register_user('mary@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('mary@email.com', '11&abcdef', '11&abcdef');
 CALL sp_add_to_shopping_cart(11, 3, 1);
 CALL sp_complete_order(
     11,
@@ -3181,7 +3269,7 @@ CALL sp_complete_order(
     'Amazon Pay'
 );
 
-SELECT fn_register_user('daisy@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('daisy@email.com', '12&abcdef', '12&abcdef');
 CALL sp_add_to_shopping_cart(12, 4, 3);
 CALL sp_complete_order(
     12,
@@ -3195,7 +3283,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('victoria@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('victoria@email.com', '13&abcdef', '13&abcdef');
 CALL sp_add_to_shopping_cart(13, 1, 3);
 CALL sp_complete_order(
     13,
@@ -3209,7 +3297,7 @@ CALL sp_complete_order(
     'Stripe'
 );
 
-SELECT fn_register_user('angel@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('angel@email.com', '14&abcdef', '14&abcdef');
 CALL sp_add_to_shopping_cart(14, 1, 4);
 CALL sp_complete_order(
     14,
@@ -3223,7 +3311,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('bern@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('bern@email.com', '15&abcdef', '15&abcdef');
 CALL sp_add_to_shopping_cart(15, 7, 1);
 CALL sp_complete_order(
     15,
@@ -3237,7 +3325,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('mark@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('mark@email.com', '16&abcdef', '16&abcdef');
 CALL sp_add_to_shopping_cart(16, 6, 1);
 CALL sp_complete_order(
     16,
@@ -3251,7 +3339,7 @@ CALL sp_complete_order(
     'PayPal'
 );
 
-SELECT fn_register_user('berry@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('berry@email.com', '17&abcdef', '17&abcdef');
 CALL sp_add_to_shopping_cart(17, 8, 2);
 CALL sp_complete_order(
     17,
@@ -3265,7 +3353,7 @@ CALL sp_complete_order(
     'Amazon Pay'
 );
 
-SELECT fn_register_user('garry@email.com', '#6hhh', '#6hhh');
+SELECT fn_register_user('garry@email.com', '18&abcdef', '18&abcdef');
 CALL sp_add_to_shopping_cart(18, 9, 2);
 CALL sp_complete_order(
     18,
