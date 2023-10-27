@@ -2086,7 +2086,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### At the very end, we have created a function that finds which is the country that orders the most, what is the most preferred payment provider, and what is the total ordered quantity:
+#### At the very end, we have created a function that finds which is the country that orders the most, what is the most preferred payment provider, which is the best selling type of item, of what metal color it is and what is the total ordered quantity:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     fn_best_selling_to_most_buying_country_via_best_provider(
@@ -2193,5 +2193,11 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+<img width="621" alt="Screenshot 2023-10-27 at 17 28 01" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/32cc3102-18d5-40bd-a0e8-12be26756a0e">
+
+<img width="522" alt="Screenshot 2023-10-27 at 17 28 49" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/14ceb936-586b-4d2e-ab3e-28bab645c2ab">
+
+
+
 
 #### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](e_commerce_database_platform.sql)
