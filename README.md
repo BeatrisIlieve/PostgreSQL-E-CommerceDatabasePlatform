@@ -1192,8 +1192,8 @@ CALL sp_remove_percent_from_discounts(
 CREATE TABLE
     shopping_cart(
         id SERIAL PRIMARY KEY,
-        session_id INTEGER DEFAULT NULL,
-        jewelry_id INTEGER DEFAULT NULL,
+        session_id INTEGER NOT NULL ,
+        inventory_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 0,
 
         CONSTRAINT ck_shopping_cart_quantity
@@ -1206,36 +1206,36 @@ CREATE TABLE
                     ON UPDATE CASCADE
                     ON DELETE SET NULL,
 
-        CONSTRAINT fk_shopping_cart_jewelries
-                    FOREIGN KEY (jewelry_id)
-                    REFERENCES jewelries(id)
+        CONSTRAINT fk_shopping_cart_inventory
+                    FOREIGN KEY (inventory_id)
+                    REFERENCES inventory(id)
                     ON UPDATE CASCADE
                     ON DELETE CASCADE
 );
 ```
-#### For the demo pusposes of this project, we have added three random payment providers in our database:
+#### For the demo pusposes of this project, we have added three payment providers in our database:
 ```plpgsql
 CREATE TABLE payment_providers(
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL
 );
-
-INSERT INTO payment_providers (name) VALUES
-    ('PayPal'),
-    ('Amazon Pay'),
-    ('Stripe');
 ```
-#### What connects the 'shopping_cart' and 'payment_providers' is the 'orders' table:
+[Link to Insert Values File](insert_values_files/insert_into_payment_providers.sql)
+
+##### `payment_providers` table:
+
+<img width="204" alt="Screenshot 2023-10-27 at 14 38 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/5f05623c-0447-466e-b3d2-6d5fa053b544">
+
+#### What connects the `shopping_cart` and `payment_providers` is the `orders` table:
 ```plpgsql
 CREATE TABLE
     orders(
-        id SERIAL PRIMARY KEY,
+        id INTEGER NOT NULL PRIMARY KEY,
         shopping_cart_id INTEGER,
         payment_provider_id INTEGER NOT NULL,
-        total_amount DECIMAL(8, 2) NOT NULL,
-        is_completed BOOLEAN DEFAULT FALSE,
+        date TIMESTAMPTZ,
 
-        CONSTRAINT fk_orders_shopping_cart
+        CONSTRAINT fk_orders_shopping_cart_id
                     FOREIGN KEY (shopping_cart_id)
                     REFERENCES shopping_cart(id)
                     ON UPDATE RESTRICT
@@ -1248,21 +1248,7 @@ CREATE TABLE
                     ON DELETE RESTRICT
 );
 ```
-#### 'transactions' table is related to 'orders':
-```plpgsql
-CREATE TABLE
-    transactions(
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER,
-        amount DECIMAL (8, 2),
 
-        CONSTRAINT fk_transactions_orders
-                FOREIGN KEY (order_id)
-                REFERENCES orders(id)
-                ON UPDATE RESTRICT
-                ON DELETE RESTRICT
-);
-```
 #### In order to proceed with actual shopping activities, we need to create a function that checks if the shopping session has exprired, which will be called from the procedures later on:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
@@ -1294,12 +1280,43 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### We also need a procedure that removes quantity from the `inventory`:
+```plpgsql
+CREATE OR REPLACE PROCEDURE
+    sp_remove_quantity_from_inventory(
+        provided_inventory_id INTEGER,
+        requested_quantity INTEGER,
+        current_quantity INTEGER
+)
+AS
+$$
+BEGIN
+    UPDATE
+        inventory
+    SET
+        quantity = quantity - requested_quantity
+    WHERE
+        id = provided_inventory_id;
+    IF
+        current_quantity - requested_quantity = 0
+    THEN
+        UPDATE
+            inventory
+        SET
+            deleted_at = NOW()
+        WHERE
+            id = provided_inventory_id;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+```
 #### The procedure 'sp_add_to_shopping_cart' performs a few checks:
 ```plpgsql
 CREATE OR REPLACE PROCEDURE
     sp_add_to_shopping_cart(
         provided_session_id INTEGER,
-        provided_jewelry_id INTEGER,
+        provided_inventory_id INTEGER,
         provided_quantity INTEGER
     )
 AS
@@ -1324,7 +1341,7 @@ BEGIN
         FROM
             inventory
         WHERE
-            jewelry_id = provided_jewelry_id
+            id = provided_inventory_id
         );
 
     IF (
@@ -1340,12 +1357,12 @@ BEGIN
 
     ELSIF (
         SELECT
-            is_active
+            deleted_at
         FROM
-            jewelries
+            inventory
         WHERE
-            id = provided_jewelry_id
-        ) IS FALSE
+            id = provided_inventory_id
+        ) IS NOT NULL
     THEN
         SELECT fn_raise_error_message(
             item_has_been_sold_out
@@ -1359,13 +1376,17 @@ BEGIN
             );
 
     ELSE
-        IF provided_jewelry_id IN (
-            SELECT
-                jewelry_id
-            FROM
-                shopping_cart
-            WHERE
-                session_id = provided_session_id
+        IF (
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    shopping_cart
+                WHERE
+                    inventory_id = provided_inventory_id
+                            AND
+                    session_id = provided_session_id
+            )
             )
         THEN
             UPDATE
@@ -1373,25 +1394,26 @@ BEGIN
             SET
                 quantity = quantity + provided_quantity
             WHERE
-                jewelry_id = provided_jewelry_id;
-
+                inventory_id = provided_inventory_id
+                            AND
+                session_id = provided_session_id;
         ELSE
             INSERT INTO
                 shopping_cart(
-                              session_id,
-                              jewelry_id,
-                              quantity
+                        session_id,
+                        inventory_id,
+                        quantity
                               )
             VALUES
-                (provided_session_id,
-                 provided_jewelry_id,
+                (
+                 provided_session_id,
+                 provided_inventory_id,
                  provided_quantity
                  );
         END IF;
 
         CALL sp_remove_quantity_from_inventory(
-            provided_session_id,
-            provided_jewelry_id,
+            provided_inventory_id,
             provided_quantity,
             current_quantity
             );
@@ -1400,49 +1422,34 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We call the procedure with 'sessiond_id', so as to be able to authenticate the current customer, and we also provide the item ID and desired quantity:
-```plpgsql
-CALL sp_add_to_shopping_cart(
-    1,
-    1,
-    2
-);
+#### We call the procedure with 'sessiond_id', so as to be able to authenticate the current customer, and we also provide the item inventory ID and desired quantity:
 
-CALL sp_add_to_shopping_cart(
-    1,
-    1,
-    1
-);
-```
-1. If the shopping session has expired:
+1. If the shopping session has expired we would get the following message:
 <img width="603" alt="Screenshot 2023-10-20 at 18 18 48" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3d48ac52-4c89-4313-9efb-9f7f7e71869a">
 
-##### Now we can login and call sp_add_to_shopping_cart as above (the password we enter is hashed again and compared with the hashed password kept in the databse):
-```plpgsql
-CALL sp_login_user(
-    'beatris@icloud.com',
-    '#6hhhhh');
-```
+2. The procedure checks if there is enough available quantity:
+##### If we try to get 24 items of jewelry with inventory ID 1 (available only 23):
 
-2. The procedure checks if there is any available quantity of the given item;
-##### For example, if we add to our shopping cart 4 pieces of item with ID 3 (that initially had 4 pieces available), we will get the following result:
-<img width="551" alt="Screenshot 2023-10-20 at 18 53 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/18a5b31d-8691-4f12-8783-814878b0c92b">
+<img width="337" alt="Screenshot 2023-10-27 at 15 10 25" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1de36970-5a46-4fd7-98d7-63473d6c82e6">
 
-<img width="837" alt="Screenshot 2023-10-20 at 18 54 17" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/59f5fc32-ef86-4fdf-b670-04d72879e933">
+3. The procedure checks if there is any available quantity of the given item. For example, if we get 23 pieces of item with inventory ID 1 and then try to add one more of the same item to the shopping cart:
 
-<img width="1253" alt="Screenshot 2023-10-20 at 18 51 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/307ed593-34a5-4209-90aa-74dae3c17229">
+<img width="331" alt="Screenshot 2023-10-27 at 15 15 32" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/51279910-a336-4cd1-8848-5b41d4eb1a9d">
 
-##### If we try to get one more of the same item:
-<img width="552" alt="Screenshot 2023-10-20 at 18 58 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b98c1afd-dff5-4563-999d-9bd4f99f2902">
+4. If the all checks passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased:
 
-3. The procedure checks if is enough available quantity:
-##### If we try to get 10 items of jewelry with ID 10 (available only 9):
-<img width="541" alt="Screenshot 2023-10-20 at 19 13 34" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/eb652fb0-25f1-4964-a4c6-7e1d0fe1b38f">
+<img width="343" alt="Screenshot 2023-10-27 at 15 18 42" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c57f2548-071e-4981-883b-dc1e5c00f409">
 
-4. If the all checks passes, and the given item ID has not already been inserted into the 'shopping_cart' table, it is being inserted, otherwise the quantity is just being increased;
-<img width="542" alt="Screenshot 2023-10-20 at 19 20 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/498e57f2-2401-4010-a10e-0f31968231a5">
+##### `shopping_cart` table:
 
-<img width="544" alt="Screenshot 2023-10-20 at 19 21 38" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/a3c62c25-0353-4359-9bc9-c2d93100593f">
+<img width="572" alt="Screenshot 2023-10-27 at 15 20 00" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/92190dc0-1bb9-45bd-8fe1-505e59416e63">
+
+##### If we add one more piece:
+
+
+
+##### `inventory' table:
+
 
 #### Afterwards, another procedure is being called that reduces the quantities in the 'inventories' table (also sets the files 'is_active' to FALSE if the quantity reaches 0 as we saw above):
 ```plpgsql
@@ -1576,6 +1583,22 @@ CALL sp_remove_from_shopping_cart(
 
 ##### 'inventory_records' table:
 <img width="749" alt="Screenshot 2023-10-21 at 16 10 59" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/08124a35-6f1b-447e-b5c2-3648f26100ed">
+
+#### `transactions` table is related to `orders`:
+```plpgsql
+CREATE TABLE
+    transactions(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        amount DECIMAL (8, 2),
+
+        CONSTRAINT fk_transactions_orders
+                FOREIGN KEY (order_id)
+                REFERENCES orders(id)
+                ON UPDATE RESTRICT
+                ON DELETE RESTRICT
+);
+```
 
 #### The final steps are to complete the order and store information about the money transaction. Firstly, we need to create a `transactions' table:
 ```plpgsql
