@@ -496,8 +496,7 @@ CREATE TABLE
 ```
 [Link to Insert Values File](insert_values_files/insert_into_employees.sql)
 ##### `employees`:
-
-<img width="1229" alt="Screenshot 2023-10-19 at 19 48 24" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/832a2aed-065e-4e46-9718-fca833a30c9a">
+<img width="1244" alt="Screenshot 2023-10-27 at 12 18 14" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6fdd7cdb-e3e1-4c12-bfaf-5c190ca51051">
 
 #### Afterwards, we authenticate employees by their password, username and ID and we also check if the employee is ACTIVE (if he/she is still employeed at the store):
 ```plpgsql
@@ -580,6 +579,77 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### In order not to repeat data, we have created seperate tables to store common jewelries characteristics:
+```plpgsql
+CREATE TABLE
+    jewelry_type(
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(30) NOT NULL
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_jewelry_type.sql)
+<img width="196" alt="Screenshot 2023-10-27 at 12 29 08" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/af727233-7b43-4139-9f30-10e5c81e8aa8">
+
+```plpgsql
+CREATE TABLE
+    jewelry_name(
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100)
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_jewelry_name.sql)
+<img width="608" alt="Screenshot 2023-10-27 at 12 31 06" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/60e60b6b-74b0-46bc-974c-21b8df21b6cd">
+
+```plpgsql
+CREATE TABLE
+    gold_color(
+        id SERIAL PRIMARY KEY,
+        color VARCHAR(15)
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_gold_color.sql)
+<img width="212" alt="Screenshot 2023-10-27 at 12 33 35" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/e7f4947f-d315-442b-9613-dce2765683d7">
+
+```plpgsql
+CREATE TABLE
+    diamond_color(
+        id SERIAL PRIMARY KEY,
+        color VARCHAR(15)
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_diamond_color.sql)
+<img width="203" alt="Screenshot 2023-10-27 at 12 35 11" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3436647b-cdb9-4308-982c-9039ee14cf0c">
+
+```plpgsql
+CREATE TABLE
+    diamond_carat_weight(
+        id SERIAL PRIMARY KEY,
+        weight VARCHAR(15)
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_diamond_weight.sql)
+<img width="215" alt="Screenshot 2023-10-27 at 12 37 14" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d6cae2c7-5f4c-4d0d-a842-3e24f26cda15">
+
+```plpgsql
+CREATE TABLE
+    diamond_clarity(
+        id SERIAL PRIMARY KEY,
+        clarity VARCHAR(15)
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_diamond_clarity.sql)
+<img width="222" alt="Screenshot 2023-10-27 at 12 38 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7a82dee2-b794-40b6-84f5-a5d0f06ee00e">
+
+```plpgsql
+CREATE TABLE
+    description(
+        id SERIAL PRIMARY KEY,
+        description TEXT
+);
+```
+[Link to Insert Values File](insert_values_files/insert_into_description.sql)
+<img width="1053" alt="Screenshot 2023-10-27 at 12 39 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d79fdbdc-7552-4a28-928a-504167ee308f">
+
 #### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the 'jewelries' table stays empty for now since later on the devoted employees would insert the items by their own):
 ```plpgsql
 CREATE TABLE
@@ -588,13 +658,7 @@ CREATE TABLE
         name VARCHAR(30) NOT NULL
 );
 
-INSERT INTO
-    types(name)
-VALUES
-    ('Ring'),
-    ('Earring'),
-    ('Necklace'),
-    ('Bracelet');
+[Link to Insert Values File](insert_values_files/insert_into_employees.sql)
 
 CREATE TABLE
     jewelries(
