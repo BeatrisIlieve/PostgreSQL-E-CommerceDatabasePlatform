@@ -588,7 +588,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_jewelry_type.sql)
+
 `jewelry_type`:
+
 <img width="196" alt="Screenshot 2023-10-27 at 12 29 08" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/af727233-7b43-4139-9f30-10e5c81e8aa8">
 
 ```plpgsql
@@ -599,7 +601,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_jewelry_name.sql)
+
 `jewelry_name`:
+
 <img width="608" alt="Screenshot 2023-10-27 at 12 31 06" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/60e60b6b-74b0-46bc-974c-21b8df21b6cd">
 
 ```plpgsql
@@ -610,7 +614,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_gold_color.sql)
+
 `gold_color`:
+
 <img width="212" alt="Screenshot 2023-10-27 at 12 33 35" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/e7f4947f-d315-442b-9613-dce2765683d7">
 
 ```plpgsql
@@ -621,6 +627,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_diamond_color.sql)
+
+`diamond_color`:
+
 <img width="203" alt="Screenshot 2023-10-27 at 12 35 11" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/3436647b-cdb9-4308-982c-9039ee14cf0c">
 
 ```plpgsql
@@ -631,7 +640,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_diamond_weight.sql)
+
 `diamond_color`:
+
 <img width="215" alt="Screenshot 2023-10-27 at 12 37 14" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d6cae2c7-5f4c-4d0d-a842-3e24f26cda15">
 
 ```plpgsql
@@ -642,7 +653,9 @@ CREATE TABLE
 );
 ```
 [Link to Insert Values File](insert_values_files/insert_into_diamond_clarity.sql)
+
 `diamond_clarity`:
+
 <img width="222" alt="Screenshot 2023-10-27 at 12 38 16" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/7a82dee2-b794-40b6-84f5-a5d0f06ee00e">
 
 ```plpgsql
@@ -652,8 +665,11 @@ CREATE TABLE
         description TEXT
 );
 ```
-`description`:
+
 [Link to Insert Values File](insert_values_files/insert_into_description.sql)
+
+`description`:
+
 <img width="1053" alt="Screenshot 2023-10-27 at 12 39 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d79fdbdc-7552-4a28-928a-504167ee308f">
 
 #### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the 'jewelries' table stays empty for now since later on the devoted employees would insert the items by their own):
