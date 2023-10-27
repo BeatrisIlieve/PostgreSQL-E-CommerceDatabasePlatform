@@ -672,66 +672,100 @@ CREATE TABLE
 
 <img width="1053" alt="Screenshot 2023-10-27 at 12 39 52" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/d79fdbdc-7552-4a28-928a-504167ee308f">
 
-#### We proceed with creating tables that will contain information about the type of jewelries we sell as well as the jewelries themselves (the 'jewelries' table stays empty for now since later on the devoted employees would insert the items by their own):
+#### We proceed with creating the `jewelries` table that cintains the respective <ins>Foreign Keys</ins> as well as regular and discount prices (it stays empty for now since later on the devoted employees would insert the values by their own):
 ```plpgsql
 CREATE TABLE
-    types(
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(30) NOT NULL
-);
-
-[Link to Insert Values File](insert_values_files/insert_into_employees.sql)
-
-CREATE TABLE
     jewelries(
-        id SERIAL PRIMARY KEY,
-        type_id INTEGER NOT NULL,
-        is_active BOOLEAN DEFAULT FALSE,
-        name VARCHAR(100) NOT NULL,
-        image_url VARCHAR(200) NOT NULL,
+        id INTEGER NOT NULL,
         regular_price DECIMAL(7, 2) NOT NULL,
         discount_price DECIMAL(7, 2),
-        metal_color VARCHAR(12) NOT NULL,
-        diamond_carat_weight VARCHAR(10) NOT NULL,
-        diamond_clarity VARCHAR(10) NOT NULL,
-        diamond_color VARCHAR(5) NOT NULL,
-        description TEXT NOT NULL,
+        type_id INTEGER NOT NULL,
+        name_id INTEGER NOT NULL,
+        img_url VARCHAR(200) NOT NULL,
+        gold_color_id INTEGER NOT NULL,
+        diamond_color_id INTEGER NOT NULL,
+        diamond_carat_weight_id INTEGER NOT NULL,
+        diamond_clarity_id INTEGER NOT NULL,
+        description_id INTEGER NOT NULL,
 
-        CONSTRAINT fk_jewelries_types
+        CONSTRAINT pk_jewelries_gold_color
+            PRIMARY KEY (id, gold_color_id),
+
+        CONSTRAINT fk_jewelries_jewelry_type
              FOREIGN KEY (type_id)
-             REFERENCES types(id)
+             REFERENCES jewelry_type(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_name
+             FOREIGN KEY (name_id)
+             REFERENCES jewelry_name(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_metal_color
+             FOREIGN KEY (gold_color_id)
+             REFERENCES gold_color(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_diamond_carat
+             FOREIGN KEY (diamond_carat_weight_id)
+             REFERENCES diamond_carat_weight(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_diamond_clarity
+             FOREIGN KEY (diamond_clarity_id)
+             REFERENCES diamond_clarity(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_diamond_color
+             FOREIGN KEY (diamond_color_id)
+             REFERENCES diamond_color(id)
+             ON UPDATE CASCADE
+             ON DELETE CASCADE,
+
+        CONSTRAINT fk_jewelries_jewelry_description
+             FOREIGN KEY (description_id)
+             REFERENCES description(id)
              ON UPDATE CASCADE
              ON DELETE CASCADE
 );
 ```
-##### 'types' table:
 
-<img width="174" alt="Screenshot 2023-10-19 at 20 13 39" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b042a250-eb0b-464e-b811-7ec1751b073a">
-
-#### The 'inventory' table serves to keep information about either ID of an employee who modified the state of a specific jewelry or a shopping session ID, and certainly it stores information about the available quantities:
+#### The `inventory` table tracks employee modifications on jewelry items and stores quantity information. It is related to the `jewelries` and `gold_color` tables, representing availability in three different metal colors:
 ```plpgsql
 CREATE TABLE
     inventory(
         id SERIAL PRIMARY KEY,
-        employee_id INTEGER,
-        session_id INTEGER,
         jewelry_id INTEGER NOT NULL,
+        color_id INTEGER NOT NULL,
+        merchandising_emp_id INTEGER,
+        inventory_emp_id INTEGER,
         quantity INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ,
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ,
 
-        CONSTRAINT fk_inventory_employees
-             FOREIGN KEY (employee_id)
+        CONSTRAINT fk_inventory_jewelries
+                FOREIGN KEY (jewelry_id, color_id)
+                REFERENCES jewelries(id, gold_color_id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE,
+
+        CONSTRAINT fk_inventory_records_employees_merchandising
+             FOREIGN KEY (merchandising_emp_id)
              REFERENCES employees(id)
              ON UPDATE CASCADE
              ON DELETE SET NULL,
 
-        CONSTRAINT fk_inventory_jewelries
-                FOREIGN KEY (jewelry_id)
-                REFERENCES jewelries(id)
-                ON UPDATE CASCADE
-                ON DELETE CASCADE
+        CONSTRAINT fk_inventory_records_employees_inventory
+             FOREIGN KEY (inventory_emp_id)
+             REFERENCES employees(id)
+             ON UPDATE CASCADE
+             ON DELETE SET NULL
 );
 ```
 #### Furthermore, 'inventory_records' table shows all events that occured on inventory with their corresponding acctions - create, update, delete and their dates:
