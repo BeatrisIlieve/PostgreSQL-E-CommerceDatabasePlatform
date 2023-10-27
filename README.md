@@ -1168,22 +1168,24 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We delete the discount applied to the item with ID 2:
+#### We delete the discount applied to the item with ID 60001 and gold_color ID 1:
 ```plpgsql
 CALL sp_remove_percent_from_discounts(
     'merchandising_staff_user_first',
     'merchandising_password_first',
     '10002',
-    2
-);
+    60001,
+    1);
 ```
 ##### The discount is deleted and the jewelry 'discount_price' is set back to Null:
 
-##### 'discounts' table:
-<img width="1260" alt="Screenshot 2023-10-20 at 17 10 43" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/db2bb9c9-2176-4e85-9467-1a8fd325070d">
+##### `jewelries` table:
 
-##### 'jewelries' table:
-<img width="1317" alt="Screenshot 2023-10-20 at 17 11 19" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/6bfc3d8f-9509-493d-af36-fb5bcf024e50">
+<img width="1383" alt="Screenshot 2023-10-27 at 14 29 13" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/2e1aa731-87a6-4e83-bdd5-3dc71a838073">
+
+##### `discounts` table:
+
+<img width="1244" alt="Screenshot 2023-10-27 at 14 28 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/ebfa8803-0d8d-496e-8d08-aef3d551ca13">
 
 #### The 'shopping_cart' table is related to the 'sessions' and 'jewelries' ones:
 ```plpgsql
