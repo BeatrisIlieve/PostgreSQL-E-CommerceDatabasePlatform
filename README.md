@@ -148,7 +148,7 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
-#### We have simulated user registration process that inludes providing <ins>Unique email</ins>  as a username and a <ins>Secure Confirmed Password</ins>. The data is stored into the `customer_users` table. Users who have just completed the registration process are <ins>Automatically logged-in</ins>:
+#### We have simulated user registration process that inludes providing <ins>Unique Email</ins>  as a username and a <ins>Secure Confirmed Password</ins>. The data is stored into the `customer_users` table. Users who have just completed the registration process are <ins>Automatically logged-in</ins>:
 ```plpgsql
 CREATE OR REPLACE FUNCTION
     fn_register_user(
@@ -261,25 +261,6 @@ BEGIN
             );
 
     END IF;
-END;
-$$
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION
-    trigger_fn_insert_id_into_customer_details()
-RETURNS TRIGGER
-AS
-$$
-BEGIN
-    INSERT INTO
-        customer_details(
-            customer_user_id
-         )
-    VALUES
-        (
-         NEW.id
-         );
-    RETURN NEW;
 END;
 $$
 LANGUAGE plpgsql;
@@ -433,30 +414,34 @@ END;
 $$
 LANGUAGE plpgsql;
 ```
+#### Now, we are going to <ins>Test</ins> the registration process:
 ##### If we try to register with a password which does not contain at least one special character:
 <img width="775" alt="Screenshot 2023-10-27 at 11 02 50" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/0f271256-3403-4161-9646-8ca4eda61795">
 
-##### If the password is not at least 8 digits long:
+##### If the password does not contain at least one digit:
+<img width="696" alt="Screenshot 2023-10-27 at 11 39 44" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fa48b03b-55d9-419b-983d-696d9d43f9e5">
 
+##### If the password is not at least 8 characters long:
+<img width="715" alt="Screenshot 2023-10-27 at 11 40 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/4c0c79fe-09c8-476f-84df-a4a0d887c422">
 
 ##### If passwords do not match:
-<img width="836" alt="Screenshot 2023-10-19 at 19 15 05" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/fb43824a-de63-49a5-9aec-4357f1fda683">
+<img width="843" alt="Screenshot 2023-10-27 at 11 43 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/bc53f81e-0eea-421b-830c-844c076456b5">
 
 ##### If email is already taken:
-<img width="833" alt="Screenshot 2023-10-19 at 19 17 41" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/b37dedd0-0566-448d-adaa-215577e6efef">
+<img width="834" alt="Screenshot 2023-10-27 at 11 46 54" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f205c94f-e550-4c09-b446-bc55a5cf9812">
 
-##### When registration is successfully completed (null values are allowed here, because the fields are obligatory upon order confirmation):
+##### When registration is successfully completed :
 
-##### 'customer_users' table:
-<img width="1043" alt="Screenshot 2023-10-19 at 19 20 45" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/26f87f45-af7c-458e-b1b9-eda7b956ea53">
+##### `customer_users` table:
+<img width="1065" alt="Screenshot 2023-10-27 at 11 52 58" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/43867079-ed9f-45f1-9d25-df081aeb19da">
 
-##### 'customer_details' table:
-<img width="1080" alt="Screenshot 2023-10-19 at 19 21 55" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/c1c04b7d-a322-4d29-b6f1-46ad18efe379">
+##### `customer_details` table (null values are allowed here, because the fields are obligatory upon order completion):
+<img width="1337" alt="Screenshot 2023-10-27 at 11 53 50" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/4600d660-cc9e-4eac-b91d-702c3f94e3c8">
 
 ##### 'sessions' table:
-<img width="1029" alt="Screenshot 2023-10-19 at 19 22 56" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/9dc59408-8924-452a-a3c5-ad1a71b9dd1a">
+<img width="1022" alt="Screenshot 2023-10-27 at 11 56 27" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/1bae2c66-abf1-44f3-a34d-9fc8813a2e46">
 
-#### For the Demo purposes of this project we have created two departments - 'Merchandising' and 'Inventory'. We simulated having Super User and Regular Users, having specific roles at the departments they belong to. They authenticate themselves via username and password kept in the database:
+#### For the Demo purposes of the project we have created two departments - 'Merchandising' and 'Inventory'. We simulated having Super User and Regular Users, having specific roles at the departments they belong to. They authenticate themselves via username and password kept in the database:
 ```plpgsql
 CREATE TABLE
     staff_users(
