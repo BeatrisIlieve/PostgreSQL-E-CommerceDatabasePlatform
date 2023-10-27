@@ -2,7 +2,7 @@
 ### <p align="center">*The current project represents a relational database management system designed to support the architecture of an online store specializing in diamonds and gold jewelry. However, we believe it can be applied to a wide range of business ideas.*</p> 
 ## <p align="center">*Entity Relationship Diagram:*</p>
 
-![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/aebe922d-a4e9-4569-8bd3-e43fecab9042)
+![ERD](https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/cd1c690c-8c9e-447b-9154-1241727d75a6)
 
 ### <p align="center">*In this document, we provide explanations and examples for every part of the script. For improved organization, we have segmented the functionality related to data insertion into distinct files and provided links to them. For the best experience, it's recommended to open these links in a new tab by right-clicking and selecting 'Open link in new tab' (or your browser's equivalent option).*</p> 
 
