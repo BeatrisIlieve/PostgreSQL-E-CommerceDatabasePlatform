@@ -2054,5 +2054,13 @@ LANGUAGE plpgsql;
 
 <img width="685" alt="Screenshot 2023-10-27 at 17 13 51" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/f44c40db-3b94-42ba-9579-e21cecfb4ef4">
 
+##### `shipping_lable` table:
+
+<img width="1309" alt="Screenshot 2023-10-27 at 17 15 12" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/4b7a8303-6372-4ee5-9933-2f77d1ba9ce9">
+
+##### `shipment_description` table:
+
+<img width="1134" alt="Screenshot 2023-10-27 at 17 15 47" src="https://github.com/BeatrisIlieve/PostgreSQL-E-CommerceDatabasePlatform/assets/122045435/dc9c334e-5602-4963-8e92-e587040ee5d2">
+
 
 #### THE WHOLE SCRIPT CAN BE EXECUTED AT ONCE, AND IT WILL PRODUCE THE SAME OUTCOME WITHOUT NEEDING TO EXECUTE IT IN MULTIPLE STEPS. IT CAN BE FOUND HERE -> [Source Code](e_commerce_database_platform.sql)
